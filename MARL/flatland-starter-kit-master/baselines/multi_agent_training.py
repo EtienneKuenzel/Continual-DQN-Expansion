@@ -272,6 +272,13 @@ def train_agent(train_params, policy, curriculum, render=False):
                     a =2
                 train_env = create_rail_env_3(tree_observation)
             if j > 1500:
+                policy.reset_scores()
+                evaluation = True
+                train_env = make_custom_training(tree_observation)
+            if j > 2000:
+                policy.set_evaluation_mode(True)
+                break
+            """if j > 1500:
                 if a == 2:
                     print("Expansion")
                     policy.expansion()
@@ -283,7 +290,7 @@ def train_agent(train_params, policy, curriculum, render=False):
                     policy.expansion()
                     a =3
             if j > 600000:
-                train_env = create_rail_env_4(tree_observation)
+                train_env = create_rail_env_4(tree_observation)"""
             if j > 800000:
                 train_env = create_rail_env_5(tree_observation)
             if j > 1000000:
@@ -321,9 +328,11 @@ def train_agent(train_params, policy, curriculum, render=False):
             if j > 880000:
                 train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
             if j > 1000000:
-                evaluation =True
-                policy.evaluation_mode(True)
+                policy.reset_scores()
+                evaluation = True
                 train_env = make_custom_training(tree_observation)
+            if j > 1075000:
+                policy.evaluation_mode(True)
         if curriculum == "4":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 65000:
@@ -445,6 +454,12 @@ def train_agent(train_params, policy, curriculum, render=False):
         if j >= 1100000:
             print("networksteps over 1  500 000")
             break
+    a = 0
+    for x in policy.get_expansion_code():
+        a += 1
+        for y in x:
+            m.get("layer").append(a)
+            m.get("type").append(y)
 
 
 
@@ -469,7 +484,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
     parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=512, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
-    parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
+    parser.add_argument("--use_gpu", help="use GPU if available", default=False, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
     parser.add_argument("--render", help="render 1 episode in 100", default=False, type=bool)
     training_params = parser.parse_args()
@@ -479,11 +494,12 @@ if __name__ == "__main__":
     policies = [Continual_DQN_Expansion, DQNPolicy]
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
+    m = {'layer': [], 'type': []}
     a=[]
     start_time = time.time()
     for x in policies:
         for y in ["3"]:
-            for z in range(5):
+            for z in range(2):
                 print("--------")
                 print(x)
                 print(y)
@@ -500,6 +516,10 @@ if __name__ == "__main__":
         writer = csv.writer(outfile)
         writer.writerow(d.keys())
         writer.writerows(zip(*d.values()))
+    with open("CDE.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(m.keys())
+        writer.writerows(zip(*m.values()))
     print(time.time() - start_time)
 
     """with open("rail_usage.csv", 'w', newline='') as csv_file:

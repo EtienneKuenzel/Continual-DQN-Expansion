@@ -33,28 +33,25 @@ class Continual_DQN_Expansion():
         self.x = 0
         self.act_rotation = 0
         self.evaluation_mode = False
+        self.networkEP = [["N"],["E","P"]]
 
 
     def act(self, handle, state, eps=0.):
-        if self.evaluation_mode:
+        if not self.evaluation_mode:
             return self.networks[-1][self.act_rotation].act(handle, state, eps)
         else:
-            a = self.get_network_with_highest_score(self.networks[-1])
-            return a
+            networks_copy = self.networks[-1][:]
+            max_score = networks_copy[0].score
+            max_score_index = 0
+            a = -1
+            for x in networks_copy:
+                a += 1
+                if max_score < x.score:
+                    max_score_index = a
+            self.networkEP[-1][max_score_index] = "+"
+            return self.networks[-1][max_score_index].act(handle,state,eps)
 
-    def get_network_with_highest_score(networks):
-        if not networks:
-            return None
 
-        highest_score_network = networks[0]
-        highest_score = highest_score_network.score
-
-        for network in networks[1:]:
-            if network.score > highest_score:
-                highest_score_network = network
-                highest_score = network.score
-
-        return highest_score_network
 
     def network_rotation(self, score):
         self.networks[-1][self.act_rotation].score_try +=1
@@ -90,6 +87,8 @@ class Continual_DQN_Expansion():
         else:
              if max_score_index == 0:
                 print("EWC ist besser")
+                self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
+                self.networkEP.append(["EE","EP"])
                 #add old networks to old stack
                 self.networks.insert(len(self.networks) -1, networks_copy)
                 # pau löschen
@@ -103,15 +102,25 @@ class Continual_DQN_Expansion():
                 self.networks[-1][0].update_ewc()
              else:
                 print("PAU ist besser")
-                self.networks.insert(len(self.networks) -1, networks_copy)
-                #ewc netzwerk löschen und pau netzwerk duplirzieren
-                self.networks[-1] = [networks_copy[max_score_index]]
+                self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
+                self.networkEP.append(["EE","EP","PE","PP","3P"])
+                self.networks.insert(len(self.networks) - 1, networks_copy)
+                #test(adding ewc+ewc und ewc+pau)
+                # pau löschen
+                self.networks[-1] = [networks_copy[0]]
+                # Adding PAU Network fertig,
                 self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
                 self.networks[-1][1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
+                self.networks[-1][1].ewc_loss = 0
+                #[[],[E,P],[EE,EP]]
+                self.networks[-1].append(networks_copy[max_score_index])
+                self.networks[-1][-1].update_ewc()
+                self.networks[-1][-1].freeze = True
+                #[[],[E,P],[EE,EP,PE]]
+                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][-1].get_weigths()))
+                self.networks[-1][-1].load_nn_state_dict(networks_copy[max_score_index].extract_nn_state_dict())
+                #[[],[E,P],[EE,EP,PE,PP]]
 
-                #Adding EWC an erster Stelle
-                self.networks[-1][0].update_ewc()
-                self.networks[-1][0].freeze = True
                 #Adding Theta3 pau gemischt mit ewc
                 #claculating avg of weights and network params
                 af_weight_theta1 = self.networks[-2][0].get_weigths()
@@ -138,12 +147,18 @@ class Continual_DQN_Expansion():
                     averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
 
-    def evaluation_mode(self, Bool):
-        self.evaluation_mode = Bool
+                # [[],[E,P],[EE,EP,PE,PP,3P]]
+
+
+    def set_evaluation_mode(self, evaluation_mode):
+        self.evaluation_mode = evaluation_mode
+    def reset_scores(self):
+        for x in self.networks[-1]:
+            x.score = 0
     def get_name(self):
         return "CDE"
-
-
+    def get_expansion_code(self):
+        return self.networkEP
 a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 b = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 relu = [a, b]
@@ -194,7 +209,7 @@ class DQNPolicy(Policy):
             for n, p in copy.deepcopy(self.params).items():
                 self.p_old[n] = torch.Tensor(p.data)
     def expansion(self):
-        pass
+        self.update_ewc()
     def act(self,handle, state, eps=0.):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
 
@@ -222,7 +237,6 @@ class DQNPolicy(Policy):
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.buffer_min_size and len(self.memory) > self.batch_size:
                 self._learn()
-
     def _learn(self):
         experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
@@ -283,32 +297,26 @@ class DQNPolicy(Policy):
 
         fisher = {n: p for n, p in fisher.items()}
         return fisher
-
     def _soft_update(self, local_model, target_model, tau):
         # Soft update model parameters.
         # θ_target = τ*θ_local + (1 - τ)*θ_target
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
-
     def save(self, filename):
         torch.save(self.qnetwork_local.state_dict(), filename + ".local")
         torch.save(self.qnetwork_target.state_dict(), filename + ".target")
-
     def load(self, filename):
         if os.path.exists(filename + ".local"):
             self.qnetwork_local.load_state_dict(torch.load(filename + ".local"))
         if os.path.exists(filename + ".target"):
             self.qnetwork_target.load_state_dict(torch.load(filename + ".target"))
-
     def save_replay_buffer(self, filename):
         memory = self.memory.memory
         with open(filename, 'wb') as f:
             pickle.dump(list(memory)[-500000:], f)
-
     def load_replay_buffer(self, filename):
         with open(filename, 'rb') as f:
             self.memory.memory = pickle.load(f)
-
     def test(self):
         self.act(np.array([[0] * self.state_size]))
         self._learn()
@@ -321,19 +329,22 @@ class DQNPolicy(Policy):
         Extract the state dictionary of the Q-network from the current instance.
         """
         return self.qnetwork_local.state_dict()
-
     def load_nn_state_dict(self, state_dict):
         """
         Load the provided state dictionary into the Q-network of the current instance.
         """
         self.qnetwork_local.load_state_dict(state_dict)
-
     def copy_params_from(self, other_dqn):
         """
         Copy parameters from another DQN model.
         """
         self.load_state_dict(other_dqn.state_dict())
-
+    def set_evaluation_mode(self, evaluation_mode):
+        pass
+    def reset_scores(self):
+        pass
+    def get_expansion_code(self):
+        return [["DQNwithEWC"]]
 class DDDQNPolicy_rpau(Policy):
     """Dueling Double DQN policy"""
 
