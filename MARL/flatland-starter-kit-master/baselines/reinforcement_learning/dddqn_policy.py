@@ -32,10 +32,30 @@ class Continual_DQN_Expansion():
         self.networks[0].append(DQNPolicy(state_size,action_size,parameters,evaluation_mode, initialweights=relu))
         self.x = 0
         self.act_rotation = 0
+        self.evaluation_mode = False
 
 
     def act(self, handle, state, eps=0.):
-        return self.networks[-1][self.act_rotation].act(handle, state, eps)
+        if self.evaluation_mode:
+            return self.networks[-1][self.act_rotation].act(handle, state, eps)
+        else:
+            a = self.get_network_with_highest_score(self.networks[-1])
+            return a
+
+    def get_network_with_highest_score(networks):
+        if not networks:
+            return None
+
+        highest_score_network = networks[0]
+        highest_score = highest_score_network.score
+
+        for network in networks[1:]:
+            if network.score > highest_score:
+                highest_score_network = network
+                highest_score = network.score
+
+        return highest_score_network
+
     def network_rotation(self, score):
         self.networks[-1][self.act_rotation].score_try +=1
         self.networks[-1][self.act_rotation].score = (self.networks[-1][self.act_rotation].score + score)/ self.networks[-1][self.act_rotation].score_try
@@ -117,64 +137,12 @@ class Continual_DQN_Expansion():
                 for key in theta1_net_param.keys():
                     averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
+
+    def evaluation_mode(self, Bool):
+        self.evaluation_mode = Bool
     def get_name(self):
         return "CDE"
 
-class Continual_DQN_Expansion_tree():
-    """Continual DDQN Expansion(CDE)"""
-    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True):
-        self.networks = []
-        self.state_size = state_size
-        self.action_size = action_size
-        self.parameters = parameters
-        self.evaluation_mode = evaluation_mode
-        self.networks.append(DQNPolicy(state_size,action_size,parameters,evaluation_mode, initialweights=relu))
-        self.x = 0
-
-
-    def act(self, handle, state, eps=0.):
-        return self.networks[-1].act(handle, state, eps)
-        #for network in self.networks:
-            #network.act(handle, state, eps)3
-    def step(self, handle, state, action, reward, next_state, done):
-        #erstes netwrok wir im moment geupdate
-        for network in self.networks:
-            network.step(handle, state, action, reward, next_state, done)
-    def expansion(self):
-        self.testlist = [False, True, False]
-        #called with new Task
-        networks_copy = self.networks[:]
-        if len(networks_copy) == 1:
-            #Adding PAU Network fertig
-            self.networks.append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False))
-            self.networks[1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
-
-            #Adding EWC fertig
-            self.networks[0].update_ewc()
-        else:
-             if self.testlist[self.x]:#networks_copy[0].score == networks_copy[1].score: > benutzen anstatt ==
-                print("EWC ist besser")
-                # pau löschen
-                self.networks.remove(networks_copy[1])
-                # Adding PAU Network fertig,
-                self.networks.append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[0].get_weigths()))
-                self.networks[1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
-                self.networks[1].ewc_loss = 0
-
-                # Adding EWC fertig
-                self.networks[0].update_ewc()
-             else:
-                print("PAU ist besser")
-                #ewc netzwerk löschen und pau netzwerk duplirzieren
-                self.networks.remove(networks_copy[0])
-                self.networks.append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[0].get_weigths()))
-                self.networks[1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
-                self.networks[1].ewc_loss = 0
-                #Adding EWC an erster Stelle
-                self.networks[0].update_ewc()
-                self.networks[0].freeze = True
-                #Adding PAU(muss nichts verändert werden)
-             self.x +=1
 
 a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 b = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)

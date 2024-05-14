@@ -227,6 +227,7 @@ def epsilon(x):
 def train_agent(train_params, policy, curriculum, render=False):
     reset = 0
     j = 0
+    evaluation = False
     episodes = []
     # Observation parameters
     observation_tree_depth = 3
@@ -320,6 +321,8 @@ def train_agent(train_params, policy, curriculum, render=False):
             if j > 880000:
                 train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
             if j > 1000000:
+                evaluation =True
+                policy.evaluation_mode(True)
                 train_env = make_custom_training(tree_observation)
         if curriculum == "4":
             train_env = create_pathfinding(tree_observation, 4)
@@ -407,11 +410,11 @@ def train_agent(train_params, policy, curriculum, render=False):
 
             # Update replay buffer and train agent-------------------------------------------------------------
             next_obs, all_rewards, done, info = train_env.step(action_dict)
-
             for agent in train_env.get_agent_handles():
                 if update_values[agent] or done['__all__']:
                     # Only learn from timesteps where something happened
-                    policy.step(agent, agent_prev_obs[agent], agent_prev_action[agent], all_rewards[agent] , agent_obs[agent], done[agent])
+                    if not evaluation:
+                        policy.step(agent, agent_prev_obs[agent], agent_prev_action[agent], all_rewards[agent] , agent_obs[agent], done[agent])
                     agent_prev_obs[agent] = agent_obs[agent].copy()
                     agent_prev_action[agent] = action_dict[agent]
                     j +=1

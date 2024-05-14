@@ -33,7 +33,6 @@ class DQN(nn.Module):
         nn.init.xavier_uniform_(self._h2.weight,gain=nn.init.calculate_gain('linear'))
         nn.init.xavier_uniform_(self._h3.weight,gain=nn.init.calculate_gain('linear'))
 
-
         self.act_func1 = PAU(weights=initial_weights[0],cuda=USE_CUDA).requires_grad_(not freeze_pau)
         self.act_func2 = PAU(weights=initial_weights[1],cuda=USE_CUDA).requires_grad_(not freeze_pau)
 
