@@ -332,7 +332,7 @@ def train_agent(train_params, policy, curriculum, render=False):
                 evaluation = True
                 train_env = make_custom_training(tree_observation)
             if j > 1075000:
-                policy.evaluation_mode(True)
+                policy.set_evaluation_mode(True)
         if curriculum == "4":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 65000:
