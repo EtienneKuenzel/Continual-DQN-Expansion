@@ -80,23 +80,25 @@ class Continual_DQN_Expansion():
 
             #aadding PAU to new stack
             self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[0][0].get_weigths()))
-            self.networks[-1][1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
 
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-             if max_score_index == 0:
+             if True:#max_score_index == 0:
                 print("EWC ist besser")
                 self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
                 self.networkEP.append(["EE","EP"])
                 #add old networks to old stack
                 self.networks.insert(len(self.networks) -1, networks_copy)
                 # pau löschen
-                self.networks[-1] = [networks_copy[0]]
+                self.networks[-1].pop()
                 # Adding PAU Network fertig,
                 self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
-                self.networks[-1][1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
-                self.networks[-1][1].ewc_loss = 0
+                self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
+                                                    self.networks[-1][0].qnetwork_target,
+                                                    self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
+                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
+                                                    self.networks[-1][0].p_old)
 
                 # Adding EWC fertig
                 self.networks[-1][0].update_ewc()
@@ -105,7 +107,6 @@ class Continual_DQN_Expansion():
                 self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
                 self.networkEP.append(["EE","EP","PE","PP","3P"])
                 self.networks.insert(len(self.networks) - 1, networks_copy)
-                #test(adding ewc+ewc und ewc+pau)
                 # pau löschen
                 self.networks[-1] = [networks_copy[0]]
                 # Adding PAU Network fertig,
@@ -196,18 +197,26 @@ class DQNPolicy(Policy):
         # Q-Network
         self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize1=self.hidsize, hidsize2=self.hidsize).to(self.device)
 
-        if not evaluation_mode:
-            self.qnetwork_target = copy.deepcopy(self.qnetwork_local)
-            self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
-            self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
+        self.qnetwork_target = copy.deepcopy(self.qnetwork_local)
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
 
-            self.t_step = 0
-            self.loss = 0.0
-            self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
-            self.p_old = {}
+        self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
+        self.t_step = 0
+        self.loss = 0.0
+        self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
+        self.p_old = {}
+        for n, p in copy.deepcopy(self.params).items():
+            self.p_old[n] = torch.Tensor(p.data)
 
-            for n, p in copy.deepcopy(self.params).items():
-                self.p_old[n] = torch.Tensor(p.data)
+    def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params,oldp):
+        self.qnetwork_local = ql
+        self.qnetwork_target = qt
+        self.optimizer = opt
+        self.ewc_loss = ewc_loss
+        self.memory = buffer
+        self.loss = loss
+        self.params = params
+        self.p_old = oldp
     def expansion(self):
         self.update_ewc()
     def act(self,handle, state, eps=0.):

@@ -451,7 +451,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         r.get("algo").append(policy.get_name() + curriculum)
 
         #a.append(train_env.return_agent_pos())
-        if j >= 1100000:
+        if j >= 1150000:
             print("networksteps over 1  500 000")
             break
     a = 0
@@ -507,12 +507,12 @@ if __name__ == "__main__":
                 train_agent(training_params, x, y)
                 print("______________")
 
-    with open("completions_simplecurriculum.csv", "w") as outfile1:
+    with open("completions.csv", "w") as outfile1:
         writer = csv.writer(outfile1)
         writer.writerow(r.keys())
         writer.writerows(zip(*r.values()))
 
-    with open("score_simplecurriculum.csv", "w") as outfile:
+    with open("score.csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(d.keys())
         writer.writerows(zip(*d.values()))
