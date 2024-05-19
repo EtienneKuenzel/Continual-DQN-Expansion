@@ -22,7 +22,7 @@ torch.set_printoptions(precision=0)
 
 
 class Continual_DQN_Expansion():
-    """Continual DDQN Expansion(CDE)"""
+    """Continual DQN Expansion(CDE)"""
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True):
         self.networks = [[]]
         self.state_size = state_size
@@ -66,6 +66,7 @@ class Continual_DQN_Expansion():
         if len(networks_copy) == 1:
             #adding the current network to the past stack
             self.networks.insert(len(self.networks) - 1, networks_copy[:])
+
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
@@ -188,11 +189,15 @@ class Continual_DQN_Expansion_safe():
                 max_score_index = a
         if len(networks_copy) == 1:
             #adding the current network to the past stack
-            self.networks.insert(0, [DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[0][0].get_weigths())])
-            self.networks[0][0].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
+            self.networks.insert(len(self.networks) - 1, networks_copy[:])
 
             #aadding PAU to new stack
-            self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[0][0].get_weigths()))
+            self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+            self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
+                                                self.networks[-1][0].qnetwork_target,
+                                                self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
+                                                self.networks[-1][0].loss, self.networks[-1][0].params,
+                                                self.networks[-1][0].p_old)
 
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
@@ -202,7 +207,7 @@ class Continual_DQN_Expansion_safe():
                 self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
                 self.networkEP.append(["EE","EP"])
                 #add old networks to old stack
-                self.networks.insert(len(self.networks) -1, networks_copy)
+                self.networks.insert(len(self.networks) -1, networks_copy[:])
                 # pau löschen
                 self.networks[-1].pop()
                 # Adding PAU Network fertig,
