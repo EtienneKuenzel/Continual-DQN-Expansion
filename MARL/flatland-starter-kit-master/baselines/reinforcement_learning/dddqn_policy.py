@@ -40,6 +40,119 @@ class Continual_DQN_Expansion():
         if not self.evaluation_mode:
             return self.networks[-1][self.act_rotation].act(handle, state, eps)
         else:
+            return self.networks[-1][0].act(handle,state,0)
+
+
+
+    def network_rotation(self, score):
+        self.networks[-1][self.act_rotation].score_try +=1
+        self.networks[-1][self.act_rotation].score = (self.networks[-1][self.act_rotation].score + score)/ self.networks[-1][self.act_rotation].score_try
+        self.act_rotation +=1
+        self.act_rotation %= len(self.networks[-1])
+    def step(self, handle, state, action, reward, next_state, done):
+        for network in self.networks[-1]:
+            network.step(handle, state, action, reward, next_state, done)
+    def expansion(self):
+        self.act_rotation = 0
+        #called with new Task
+        networks_copy = self.networks[-1][:]
+        max_score = networks_copy[0].score
+        max_score_index = 0
+        a = -1
+        for x in networks_copy:
+            a+=1
+            if max_score < x.score:
+                max_score_index = a
+        if len(networks_copy) == 1:
+            #adding the current network to the past stack
+            self.networks.insert(len(self.networks) - 1, networks_copy[:])
+            #Adding EWC fertig to newstack
+            self.networks[-1][0].update_ewc()
+        else:
+             if True:#max_score_index == 0:
+                print("EWC ist besser")
+                self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
+                self.networkEP.append(["EE","EP"])
+                #add old networks to old stack
+                self.networks.insert(len(self.networks) -1, networks_copy[:])
+                self.networks[-1][0].update_ewc()
+             else:
+                print("PAU ist besser")
+                self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
+                self.networkEP.append(["EE","EP","PE","PP","3P"])
+                self.networks.insert(len(self.networks) - 1, networks_copy)
+                # pau löschen
+                self.networks[-1] = [networks_copy[0]]
+                # Adding PAU Network fertig,
+                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+                self.networks[-1][1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
+                self.networks[-1][1].ewc_loss = 0
+                #[[],[E,P],[EE,EP]]
+                self.networks[-1].append(networks_copy[max_score_index])
+                self.networks[-1][-1].update_ewc()
+                self.networks[-1][-1].freeze = True
+                #[[],[E,P],[EE,EP,PE]]
+                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][-1].get_weigths()))
+                self.networks[-1][-1].load_nn_state_dict(networks_copy[max_score_index].extract_nn_state_dict())
+                #[[],[E,P],[EE,EP,PE,PP]]
+
+                #Adding Theta3 pau gemischt mit ewc
+                #claculating avg of weights and network params
+                af_weight_theta1 = self.networks[-2][0].get_weigths()
+                af_weight_theta2 = self.networks[-1][0].get_weigths()
+                theta1_net_param = self.networks[-2][0].extract_nn_state_dict()
+                theta2_net_param = self.networks[-1][0].extract_nn_state_dict()
+
+                theta1_layer1, theta1_layer2 = af_weight_theta1
+                theta2_layer1, theta2_layer2 = af_weight_theta2
+
+                theta1_layer1_nom, theta1_layer1_denom = theta1_layer1
+                theta1_layer2_nom, theta1_layer2_denom = theta1_layer2
+                theta2_layer1_nom, theta2_layer1_denom = theta2_layer1
+                theta2_layer2_nom, theta2_layer2_denom = theta2_layer2
+
+                theta3_layer1 = (theta1_layer1_nom + theta2_layer1_nom)/2, (theta1_layer1_denom + theta2_layer1_denom)/2
+                theta3_layer2 = (theta1_layer2_nom + theta2_layer2_nom)/2, (theta1_layer2_denom + theta2_layer2_denom)/2
+                theta3_weigths = [theta3_layer1, theta3_layer2]
+                theta3_weigths = [(t1.detach(), t2.detach()) for t1, t2 in theta3_weigths]
+                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=theta3_weigths))
+                #adding avg network params
+                averaged_state_dict = {}
+                for key in theta1_net_param.keys():
+                    averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
+                self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
+
+                # [[],[E,P],[EE,EP,PE,PP,3P]]
+
+
+    def set_evaluation_mode(self, evaluation_mode):
+        self.evaluation_mode = evaluation_mode
+    def reset_scores(self):
+        for x in self.networks[-1]:
+            x.score = 0
+    def get_name(self):
+        return "CDE"
+    def get_expansion_code(self):
+        return self.networkEP
+class Continual_DQN_Expansion_safe():
+    """Continual DDQN Expansion(CDE)"""
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True):
+        self.networks = [[]]
+        self.state_size = state_size
+        self.action_size = action_size
+        self.parameters = parameters
+        self.evaluation_mode = evaluation_mode
+        self.networks[0].append(DQNPolicy(state_size,action_size,parameters,evaluation_mode, initialweights=relu))
+        self.x = 0
+        self.act_rotation = 0
+        self.evaluation_mode = False
+        self.networkEP = [["N"],["E","P"]]
+
+
+    def act(self, handle, state, eps=0.):
+        if not self.evaluation_mode:
+            return self.networks[-1][self.act_rotation].act(handle, state, eps)
+        else:
             networks_copy = self.networks[-1][:]
             max_score = networks_copy[0].score
             max_score_index = 0
