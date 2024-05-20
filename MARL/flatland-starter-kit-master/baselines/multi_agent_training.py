@@ -484,7 +484,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
     parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=512, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
-    parser.add_argument("--use_gpu", help="use GPU if available", default=False, type=bool)
+    parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
     parser.add_argument("--render", help="render 1 episode in 100", default=False, type=bool)
     training_params = parser.parse_args()
