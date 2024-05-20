@@ -88,7 +88,7 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-             if True:#max_score_index == 0:
+             if max_score_index == 0:
                 print("EWC ist besser")
                 self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
                 self.networkEP.append(["EE","EP"])
@@ -110,20 +110,30 @@ class Continual_DQN_Expansion():
                 print("PAU ist besser")
                 self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
                 self.networkEP.append(["EE","EP","PE","PP","3P"])
-                self.networks.insert(len(self.networks) - 1, networks_copy)
+                # add old networks to old stack
+                self.networks.insert(len(self.networks) - 1, networks_copy[:])
                 # pau löschen
-                self.networks[-1] = [networks_copy[0]]
                 # Adding PAU Network fertig,
-                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
-                self.networks[-1][1].load_nn_state_dict(networks_copy[0].extract_nn_state_dict())
-                self.networks[-1][1].ewc_loss = 0
-                #[[],[E,P],[EE,EP]]
-                self.networks[-1].append(networks_copy[max_score_index])
-                self.networks[-1][-1].update_ewc()
-                self.networks[-1][-1].freeze = True
-                #[[],[E,P],[EE,EP,PE]]
-                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][-1].get_weigths()))
-                self.networks[-1][-1].load_nn_state_dict(networks_copy[max_score_index].extract_nn_state_dict())
+                self.networks[-1].insert(1,DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+                self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
+                                                    self.networks[-1][0].qnetwork_target,
+                                                    self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
+                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
+                                                    self.networks[-1][0].p_old)
+
+                # Adding EWC fertig
+                self.networks[-1][0].update_ewc()
+                #[[],[E,P],[EE,EP, P]]
+                self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+                self.networks[-1][3].set_parameters(self.networks[-1][0].qnetwork_local,
+                                                    self.networks[-1][0].qnetwork_target,
+                                                    self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
+                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
+                                                    self.networks[-1][0].p_old)
+
+                # Adding EWC fertig
+                self.networks[-1][0].update_ewc()
+                self.networks[-1][0].freeze = True
                 #[[],[E,P],[EE,EP,PE,PP]]
 
                 #Adding Theta3 pau gemischt mit ewc
@@ -151,7 +161,6 @@ class Continual_DQN_Expansion():
                 for key in theta1_net_param.keys():
                     averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
-
                 # [[],[E,P],[EE,EP,PE,PP,3P]]
 
 
@@ -167,9 +176,16 @@ class Continual_DQN_Expansion():
 a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 b = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 relu = [a, b]
-class DQNPolicy(Policy):
-    """Dueling Double DQN policy"""
-    def __init__(self, state_size, action_size , parameters, evaluation_mode=False,freeze=True,initialweights=relu):
+import torch
+import torch.optim as optim
+import torch.nn.functional as F
+from torch.autograd import Variable
+import random
+import numpy as np
+import copy
+
+class DQNPolicy:
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=relu):
         self.evaluation_mode = evaluation_mode
         self.state_size = state_size
         self.action_size = action_size
@@ -184,13 +200,11 @@ class DQNPolicy(Policy):
         self.freeze = freeze
         self.ewc_loss = 0
         self.ewc_lambda = 0.1
-        self.retain_graph = False #Achref fragen, wenn True user error
+        self.retain_graph = False
         self.score = 0
         self.score_try = 0
         self.weights = initialweights
 
-
-        # Device
         if parameters.use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda:2")
             print("🐇 Using GPU")
@@ -198,21 +212,20 @@ class DQNPolicy(Policy):
             self.device = torch.device("cpu")
             print("🐢 Using CPU")
 
-        # Q-Network
-        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize1=self.hidsize, hidsize2=self.hidsize).to(self.device)
+        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize1=self.hidsize, hidsize2=self.hidsize).to(torch.device("cpu"))
 
-        self.qnetwork_target = copy.deepcopy(self.qnetwork_local)
-        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
-
-        self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
-        self.t_step = 0
-        self.loss = 0.0
         self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
         self.p_old = {}
         for n, p in copy.deepcopy(self.params).items():
             self.p_old[n] = torch.Tensor(p.data)
 
-    def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params,oldp):
+        self.qnetwork_local = self.qnetwork_local.to(self.device)
+        self.qnetwork_target = copy.deepcopy(self.qnetwork_local).to(self.device)
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
+        self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
+        self.t_step = 0
+
+    def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params, oldp):
         self.qnetwork_local = ql
         self.qnetwork_target = qt
         self.optimizer = opt
@@ -221,78 +234,83 @@ class DQNPolicy(Policy):
         self.loss = loss
         self.params = params
         self.p_old = oldp
+
     def expansion(self):
         self.update_ewc()
-    def act(self,handle, state, eps=0.):
+
+    def act(self, handle, state, eps=0.):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
-
         self.qnetwork_local.eval()
-
         with torch.no_grad():
             action_values = self.qnetwork_local(state, self.freeze)
-
         self.qnetwork_local.train()
 
-        # Epsilon-greedy action selection
         if random.random() > eps:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
+
     def network_rotation(self, score):
         pass
+
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
-        # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
-        # Learn every UPDATE_EVERY time steps.
         self.t_step = (self.t_step + 1) % self.update_every
         if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.buffer_min_size and len(self.memory) > self.batch_size:
                 self._learn()
+
     def _learn(self):
         experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
+        states = states.to(self.device)
+        actions = actions.to(self.device)
+        rewards = rewards.to(self.device)
+        next_states = next_states.to(self.device)
+        dones = dones.to(self.device)
 
-        # Get expected Q values from local model
         q_expected = self.qnetwork_local(states, self.freeze).gather(1, actions)
-        # DQN
         q_targets_next = self.qnetwork_target(next_states, self.freeze).detach().max(1)[0].unsqueeze(-1)
-
-        # Compute Q targets for current states
         q_targets = rewards + (self.gamma * q_targets_next * (1 - dones))
+        q_expected = q_expected.to(self.device)
+        q_targets = q_targets.to(self.device)
 
-        # Compute loss
-        self.loss = F.mse_loss(q_expected, q_targets)+ self.ewc_lambda * self.ewc_loss
+        if not self.ewc_loss == 0:
+            self.ewc_loss = self.ewc_loss.to(self.device)
+            print(f"Q expected device: {self.ewc_loss.device}")
 
-        # Minimize the loss
+        self.loss = F.mse_loss(q_expected, q_targets) + self.ewc_lambda * self.ewc_loss
+        print(f"Q expected device: {q_expected.device}")
+        print(f"Q expected device: {q_targets.device}")
+        self.loss = self.loss.to(self.device)
+
         self.optimizer.zero_grad()
-        self.loss.backward(retain_graph=self.retain_graph)
+        self.loss.backward(retain_graph=True)
         self.optimizer.step()
-
-        # Update target network
         self._soft_update(self.qnetwork_local, self.qnetwork_target, self.tau)
-    def get_ewc_loss(self, model, fisher, p_old):
 
-        #named parameters checken, da ist irgendwo nen fehler, dass die niocht gleichbenannet sind
+    def get_ewc_loss(self, model, fisher, p_old):
         loss = 0
         for n, p in model.named_parameters():
-            _loss = fisher[n] * (p - p_old[n]) ** 2
+            _loss = fisher[n] * (p - p_old[n].to(self.device)) ** 2
             loss += _loss.sum()
         return loss
-    def update_ewc(self):
-        lastdevice = self.device
-        self.device = torch.device("cpu")
-        fisher_matrix = self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
-        self.ewc_loss += self.get_ewc_loss(self.qnetwork_local, fisher_matrix, self.p_old)
 
+    def update_ewc(self):
+
+        self.qnetwork_local = self.qnetwork_local.to(self.device)
+        fisher_matrix = self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
+        self.ewc_loss += self.get_ewc_loss(self.qnetwork_local, fisher_matrix, self.p_old).to(self.device)
+        last_device = self.device
+        self.device = torch.device("cpu")
         self.retain_graph = True
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
         self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
-        self.p_old ={}
-        for n, p in copy.deepcopy(self.params).items():
-            self.p_old[n] = torch.Tensor(p.data)
-        self.device = lastdevice
+        self.p_old = {n: p.clone().detach().to(self.device) for n, p in self.params.items()}
+        self.qnetwork_local = self.qnetwork_local.to(last_device)
+        self.device = last_device
+
     def get_fisher_diag(self, model, dataset, params):
         fisher = {}
         for n, p in copy.deepcopy(params).items():
@@ -301,24 +319,23 @@ class DQNPolicy(Policy):
 
         model.eval()
         states, actions, rewards, next_states, done = dataset.sample()
-        #
-        for x in range(states.size(dim = 0)):
+        states = states.to(self.device)
+        for x in range(states.size(dim=0)):
             model.zero_grad()
             output = model(states[x], self.freeze).view(1, -1)
             target = output.max(1)[1].view(-1)
             negloglikelihood = F.nll_loss(F.log_softmax(output, dim=1), target)
             negloglikelihood.backward(retain_graph=True)
-        #
         for n, p in model.named_parameters():
             fisher[n].data += p.grad.data ** 2 / 128
 
         fisher = {n: p for n, p in fisher.items()}
         return fisher
+
     def _soft_update(self, local_model, target_model, tau):
-        # Soft update model parameters.
-        # θ_target = τ*θ_local + (1 - τ)*θ_target
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+
     def save(self, filename):
         torch.save(self.qnetwork_local.state_dict(), filename + ".local")
         torch.save(self.qnetwork_target.state_dict(), filename + ".target")
