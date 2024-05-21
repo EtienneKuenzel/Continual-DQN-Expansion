@@ -440,15 +440,15 @@ def train_agent(train_params, policy, curriculum, render=False):
         completion = tasks_finished / max(1, train_env.get_num_agents())
         normalized_score = score / (max_steps * train_env.get_num_agents())
         episodes.append(j)
-        policy.network_rotation(normalized_score)
 
         d.get("networksteps").append(j)
         d.get("score").append(normalized_score)
-        d.get("algo").append(policy.get_name() + curriculum)
+        d.get("algo").append(policy.get_name())
 
         r.get("networksteps").append(j)
         r.get("completions").append(completion)
-        r.get("algo").append(policy.get_name() + curriculum)
+        r.get("algo").append(policy.get_name())
+        policy.network_rotation(normalized_score)
 
         #a.append(train_env.return_agent_pos())
         if j >= 1150000:
