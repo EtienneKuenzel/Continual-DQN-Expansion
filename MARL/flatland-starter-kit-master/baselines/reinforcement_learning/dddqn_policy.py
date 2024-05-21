@@ -63,7 +63,7 @@ class Continual_DQN_Expansion():
         for network in self.networks[-1]:
             network.step(handle, state, action, reward, next_state, done)
     def expansion(self):
-        self.act_rotation = 0
+        self.act_rotation = 1
         #called with new Task
         networks_copy = self.networks[-1][:]
         max_score = networks_copy[0].score
@@ -71,6 +71,8 @@ class Continual_DQN_Expansion():
         a = -1
         for x in networks_copy:
             a+=1
+            print(x.score)
+            #-0.5 0
             if max_score < x.score:
                 max_score_index = a
         if len(networks_copy) == 1:
@@ -88,7 +90,7 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-             if max_score_index == 0:
+             if False:#max_score_index == 0:
                 print("EWC ist besser")
                 self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
                 self.networkEP.append(["EE","EP"])
@@ -114,26 +116,27 @@ class Continual_DQN_Expansion():
                 self.networks.insert(len(self.networks) - 1, networks_copy[:])
                 # pau löschen
                 # Adding PAU Network fertig,
+                #[[],[E,P],[E,P]]
                 self.networks[-1].insert(1,DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
                 self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
                                                     self.networks[-1][0].qnetwork_target,
                                                     self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
                                                     self.networks[-1][0].loss, self.networks[-1][0].params,
                                                     self.networks[-1][0].p_old)
-
+                #[[],[E,P],[E,EP, P]]
                 # Adding EWC fertig
                 self.networks[-1][0].update_ewc()
                 #[[],[E,P],[EE,EP, P]]
-                self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
-                self.networks[-1][3].set_parameters(self.networks[-1][0].qnetwork_local,
-                                                    self.networks[-1][0].qnetwork_target,
-                                                    self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
-                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
-                                                    self.networks[-1][0].p_old)
-
+                self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][2].get_weigths()))
+                self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
+                                                    self.networks[-1][2].qnetwork_target,
+                                                    self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
+                                                    self.networks[-1][2].loss, self.networks[-1][2].params,
+                                                    self.networks[-1][2].p_old)
+                #[[],[E,P],[EE,EP, PE, PP]]
                 # Adding EWC fertig
-                self.networks[-1][0].update_ewc()
-                self.networks[-1][0].freeze = True
+                self.networks[-1][2].update_ewc()
+                self.networks[-1][2].freeze = True
                 #[[],[E,P],[EE,EP,PE,PP]]
 
                 #Adding Theta3 pau gemischt mit ewc
@@ -163,6 +166,7 @@ class Continual_DQN_Expansion():
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
                 # [[],[E,P],[EE,EP,PE,PP,3P]]
         self.reset_scores()
+        print(self.networks[-1][0].score)
 
 
     def set_evaluation_mode(self, evaluation_mode):
@@ -310,6 +314,7 @@ class DQNPolicy:
 
         model.eval()
         states, actions, rewards, next_states, done = dataset.sample()
+
         states = states.to(self.device)
         for x in range(states.size(dim=0)):
             model.zero_grad()
@@ -318,7 +323,7 @@ class DQNPolicy:
             negloglikelihood = F.nll_loss(F.log_softmax(output, dim=1), target)
             negloglikelihood.backward(retain_graph=True)
         for n, p in model.named_parameters():
-            fisher[n].data += p.grad.data ** 2 / 128
+            fisher[n].data += p.grad.data ** 2 / len(dataset.sample())
 
         fisher = {n: p for n, p in fisher.items()}
         return fisher

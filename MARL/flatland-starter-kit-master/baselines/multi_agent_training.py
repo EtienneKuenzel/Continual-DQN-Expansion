@@ -499,7 +499,7 @@ if __name__ == "__main__":
     start_time = time.time()
     for x in policies:
         for y in ["3"]:
-            for z in range(1):
+            for z in range(4):
                 print("--------")
                 print(x)
                 print(y)
