@@ -71,8 +71,6 @@ class Continual_DQN_Expansion():
         a = -1
         for x in networks_copy:
             a+=1
-            print(x.score)
-            #-0.5 0
             if max_score < x.score:
                 max_score_index = a
         if len(networks_copy) == 1:
@@ -174,6 +172,7 @@ class Continual_DQN_Expansion():
     def reset_scores(self):
         for x in self.networks[-1]:
             x.score = 0
+            x.score_try = 0
     def get_name(self):
         return "CDE" + str(self.act_rotation)
     def get_expansion_code(self):
