@@ -22,27 +22,27 @@ USE_CUDA = torch.cuda.is_available()
 
 class DQN(nn.Module):
     #Dueling mit state in pau und adv normal
-    def __init__(self,state_size, action_size,initial_weights, freeze_pau=False, hidsize1=128, hidsize2=128):
+    def __init__(self,state_size, action_size,initial_weights, freeze_pau=False, hidsize=128):
         super(DQN, self).__init__()
+        self._0 = nn.Linear(state_size, hidsize)
+        nn.init.xavier_uniform_(self._0.weight,gain=nn.init.calculate_gain('linear'))
+        for x in range(len(initial_weights)-1):
+            print(x+1)
+            exec(f'self._{x+1} = nn.Linear({hidsize}, {hidsize})')
+            exec(f"nn.init.xavier_uniform_(self._{x+1}.weight, gain=nn.init.calculate_gain('linear'))")
+        exec(f'self._{len(initial_weights)} = nn.Linear({hidsize}, {action_size})')
+        exec(f"nn.init.xavier_uniform_(self._{len(initial_weights)}.weight, gain=nn.init.calculate_gain('linear'))")
 
-        self._h1= nn.Linear(state_size, hidsize1)
-        self._h2 = nn.Linear(hidsize1, hidsize2)
-        self._h3 = nn.Linear(hidsize2, action_size)
 
-        nn.init.xavier_uniform_(self._h1.weight,gain=nn.init.calculate_gain('linear'))
-        nn.init.xavier_uniform_(self._h2.weight,gain=nn.init.calculate_gain('linear'))
-        nn.init.xavier_uniform_(self._h3.weight,gain=nn.init.calculate_gain('linear'))
-
-        self.act_func1 = PAU(weights=initial_weights[0],cuda=USE_CUDA).requires_grad_(not freeze_pau)
-        self.act_func2 = PAU(weights=initial_weights[1],cuda=USE_CUDA).requires_grad_(not freeze_pau)
-
+        for x in range(len(initial_weights)):
+            exec(f'self.func{x} = PAU(weights=initial_weights[{x}], cuda={USE_CUDA}).requires_grad_({not freeze_pau})')
     def forward(self, state, freeze):
         if freeze:
-            self.act_func1.freeze()
-            self.act_func2.freeze()
-        x = self.act_func1(self._h1(state))
-        x = self.act_func2(self._h2(x))
-        return self._h3(x)
+            self.func0.freeze()
+            self.func1.freeze()
+        x = self.func0(self._0(state))
+        x = self.func1(self._1(x))
+        return self._2(x)
     def get_weights(self):
         weights_list = []
         a = self.act_func1.weights_nominator, self.act_func1.weights_denominator

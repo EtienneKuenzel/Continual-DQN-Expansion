@@ -210,7 +210,7 @@ class DQNPolicy:
             self.device = torch.device("cpu")
             print("🐢 Using CPU")
 
-        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize1=self.hidsize, hidsize2=self.hidsize).to(torch.device("cpu"))
+        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize=self.hidsize).to(torch.device("cpu"))
 
         self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
         self.p_old = {}
