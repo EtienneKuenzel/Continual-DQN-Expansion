@@ -450,10 +450,12 @@ def train_agent(train_params, policy, curriculum, render=False):
         r.get("algo").append(policy.get_name())
         policy.network_rotation(normalized_score)
 
-        #a.append(train_env.return_agent_pos())
+               #a.append(train_env.return_agent_pos())
         if j >= 1150000:
             print("networksteps over 1  500 000")
             break
+        t.get("function").append(policy.get_activation())
+        t.get("type").append(policy.get_net())
     a = 0
     for x in policy.get_expansion_code():
         a += 1
@@ -482,7 +484,7 @@ if __name__ == "__main__":
     parser.add_argument("--gamma", help="discount factor", default=0.99, type=float)
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
-    parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=512, type=int)
+    parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=256, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
@@ -495,11 +497,12 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     m = {'layer': [], 'type': []}
+    t = {'function': [], 'type': []}
     a=[]
     start_time = time.time()
     for x in policies:
         for y in ["3"]:
-            for z in range(4):
+            for z in range(10):
                 print("--------")
                 print(x)
                 print(y)
@@ -520,6 +523,10 @@ if __name__ == "__main__":
         writer = csv.writer(outfile)
         writer.writerow(m.keys())
         writer.writerows(zip(*m.values()))
+    with open("weights.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(t.keys())
+        writer.writerows(zip(*t.values()))
     print(time.time() - start_time)
 
     """with open("rail_usage.csv", 'w', newline='') as csv_file:
