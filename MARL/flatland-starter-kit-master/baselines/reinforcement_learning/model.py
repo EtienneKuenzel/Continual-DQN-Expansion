@@ -24,31 +24,42 @@ class DQN(nn.Module):
     #Dueling mit state in pau und adv normal
     def __init__(self,state_size, action_size,initial_weights, freeze_pau=False, hidsize=128):
         super(DQN, self).__init__()
-        self._0 = nn.Linear(state_size, hidsize)
-        nn.init.xavier_uniform_(self._0.weight,gain=nn.init.calculate_gain('linear'))
-        for x in range(len(initial_weights)-1):
-            print(x+1)
-            exec(f'self._{x+1} = nn.Linear({hidsize}, {hidsize})')
-            exec(f"nn.init.xavier_uniform_(self._{x+1}.weight, gain=nn.init.calculate_gain('linear'))")
-        exec(f'self._{len(initial_weights)} = nn.Linear({hidsize}, {action_size})')
-        exec(f"nn.init.xavier_uniform_(self._{len(initial_weights)}.weight, gain=nn.init.calculate_gain('linear'))")
+        self.layers = nn.ModuleList()
+        self.activations = nn.ModuleList()
+
+        # Create the first layer
+        self.layers.append(nn.Linear(state_size, hidsize))
+        nn.init.xavier_uniform_(self.layers[-1].weight, gain=nn.init.calculate_gain('linear'))
+
+        # Create hidden layers
+        for _ in range(len(initial_weights) - 1):
+            self.layers.append(nn.Linear(hidsize, hidsize))
+            nn.init.xavier_uniform_(self.layers[-1].weight, gain=nn.init.calculate_gain('linear'))
+
+        # Create the output layer
+        self.layers.append(nn.Linear(hidsize, action_size))
+        nn.init.xavier_uniform_(self.layers[-1].weight, gain=nn.init.calculate_gain('linear'))
+
+        # Create PAU activation functions
+        for weights in initial_weights:
+            self.activations.append(PAU(weights=weights, cuda=torch.cuda.is_available()).requires_grad_(not freeze_pau))
 
 
-        for x in range(len(initial_weights)):
-            exec(f'self.func{x} = PAU(weights=initial_weights[{x}], cuda={USE_CUDA}).requires_grad_({not freeze_pau})')
+
     def forward(self, state, freeze):
         if freeze:
-            self.func0.freeze()
-            self.func1.freeze()
-        x = self.func0(self._0(state))
-        x = self.func1(self._1(x))
-        return self._2(x)
+            for x in self.activations:
+                x.freeze()
+        x = state
+        for i in range(len(self.activations)):
+            x = self.activations[i](self.layers[i](x))
+        x = self.layers[-1](x)  # Output layer without activation
+        return x
     def get_weights(self):
         weights_list = []
-        a = self.act_func1.weights_nominator, self.act_func1.weights_denominator
-        weights_list.append(a)
-        a = self.act_func2.weights_nominator, self.act_func2.weights_denominator
-        weights_list.append(a)
+        for x in self.activations:
+            a = x.weights_nominator, x.weights_denominator
+            weights_list.append(a)
         return weights_list
 
 __all__: List[str] = ["PAU", "freeze_pau"]

@@ -17,7 +17,7 @@ import numpy
 
 from reinforcement_learning.model import DQN, Network
 from reinforcement_learning.policy import Policy
-torch.set_printoptions(precision=0)
+torch.set_printoptions(precision=5)
 
 
 
@@ -137,15 +137,15 @@ class Continual_DQN_Expansion():
                 self.networks[-1][2].freeze = True
                 #[[],[E,P],[EE,EP,PE,PP]]
 
-                #Adding Theta3 pau gemischt mit ewc
+                """                #Adding Theta3 pau gemischt mit ewc
                 #claculating avg of weights and network params
-                af_weight_theta1 = self.networks[-2][0].get_weigths()
-                af_weight_theta2 = self.networks[-1][0].get_weigths()
+
                 theta1_net_param = self.networks[-2][0].extract_nn_state_dict()
                 theta2_net_param = self.networks[-1][0].extract_nn_state_dict()
-
-                theta1_layer1, theta1_layer2 = af_weight_theta1
-                theta2_layer1, theta2_layer2 = af_weight_theta2
+                
+                
+                theta1_layer1, theta1_layer2 = self.networks[-2][0].get_weigths()
+                theta2_layer1, theta2_layer2 = self.networks[-1][0].get_weigths()
 
                 theta1_layer1_nom, theta1_layer1_denom = theta1_layer1
                 theta1_layer2_nom, theta1_layer2_denom = theta1_layer2
@@ -162,7 +162,7 @@ class Continual_DQN_Expansion():
                 for key in theta1_net_param.keys():
                     averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
-                # [[],[E,P],[EE,EP,PE,PP,3P]]
+                # [[],[E,P],[EE,EP,PE,PP,3P]]"""
         self.reset_scores()
         print(self.networks[-1][0].score)
 
@@ -177,9 +177,16 @@ class Continual_DQN_Expansion():
         return "CDE" + str(self.act_rotation)
     def get_expansion_code(self):
         return self.networkEP
+
+    def get_activation(self):
+        return str(self.networks[-1][self.act_rotation].get_weigths())
+    def get_net(self):
+        return self.act_rotation
 a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
 b = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
-relu = [a, b]
+c = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
+d = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
+relu = [a, b, c, d]
 
 
 class DQNPolicy:
