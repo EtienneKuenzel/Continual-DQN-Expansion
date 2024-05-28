@@ -24,7 +24,7 @@ torch.set_printoptions(precision=5)
 
 class Continual_DQN_Expansion():
     """Continual DDQN Expansion(CDE)"""
-    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True):
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False):
         self.networks = [[]]
         self.state_size = state_size
         self.action_size = action_size
@@ -35,8 +35,6 @@ class Continual_DQN_Expansion():
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = [["N"],["E","P"]]
-
-
     def act(self, handle, state, eps=0.):
         if not self.evaluation_mode:
             return self.networks[-1][self.act_rotation].act(handle, state, eps)
@@ -51,9 +49,6 @@ class Continual_DQN_Expansion():
                     max_score_index = a
             self.networkEP[-1][max_score_index] = "+"
             return self.networks[-1][max_score_index].act(handle,state,eps)
-
-
-
     def network_rotation(self, score):
         self.networks[-1][self.act_rotation].score_try +=1
         self.networks[-1][self.act_rotation].score = (self.networks[-1][self.act_rotation].score + score)/ self.networks[-1][self.act_rotation].score_try
@@ -165,9 +160,6 @@ class Continual_DQN_Expansion():
                 self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
                 # [[],[E,P],[EE,EP,PE,PP,3P]]"""
         self.reset_scores()
-        print(self.networks[-1][0].score)
-
-
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode
     def reset_scores(self):
@@ -230,7 +222,6 @@ class DQNPolicy:
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
         self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
         self.t_step = 0
-
     def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params, oldp):
         self.qnetwork_local = ql
         self.qnetwork_target = qt
@@ -240,10 +231,8 @@ class DQNPolicy:
         self.loss = loss
         self.params = params
         self.p_old = oldp
-
     def expansion(self):
         self.update_ewc()
-
     def act(self, handle, state, eps=0.):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
@@ -255,10 +244,8 @@ class DQNPolicy:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
-
     def network_rotation(self, score):
         pass
-
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
         self.memory.add(state, action, reward, next_state, done)
@@ -266,7 +253,6 @@ class DQNPolicy:
         if self.t_step == 0:
             if len(self.memory) > self.buffer_min_size and len(self.memory) > self.batch_size:
                 self._learn()
-
     def _learn(self):
         experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
@@ -288,14 +274,12 @@ class DQNPolicy:
         self.loss.backward(retain_graph=True)
         self.optimizer.step()
         self._soft_update(self.qnetwork_local, self.qnetwork_target, self.tau)
-
     def get_ewc_loss(self, model, fisher, p_old):
         loss = 0
         for n, p in model.named_parameters():
             _loss = fisher[n] * (p - p_old[n].to(self.device)) ** 2
             loss += _loss.sum()
         return loss
-
     def update_ewc(self):
 
         self.qnetwork_local = self.qnetwork_local.to(self.device)
@@ -312,7 +296,6 @@ class DQNPolicy:
 
         self.qnetwork_local = self.qnetwork_local.to(last_device)
         self.device = last_device
-
     def get_fisher_diag(self, model, dataset, params):
         fisher = {}
         for n, p in copy.deepcopy(params).items():
@@ -334,19 +317,9 @@ class DQNPolicy:
 
         fisher = {n: p for n, p in fisher.items()}
         return fisher
-
     def _soft_update(self, local_model, target_model, tau):
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
-
-    def save(self, filename):
-        torch.save(self.qnetwork_local.state_dict(), filename + ".local")
-        torch.save(self.qnetwork_target.state_dict(), filename + ".target")
-    def load(self, filename):
-        if os.path.exists(filename + ".local"):
-            self.qnetwork_local.load_state_dict(torch.load(filename + ".local"))
-        if os.path.exists(filename + ".target"):
-            self.qnetwork_target.load_state_dict(torch.load(filename + ".target"))
     def save_replay_buffer(self, filename):
         memory = self.memory.memory
         with open(filename, 'wb') as f:
@@ -354,9 +327,6 @@ class DQNPolicy:
     def load_replay_buffer(self, filename):
         with open(filename, 'rb') as f:
             self.memory.memory = pickle.load(f)
-    def test(self):
-        self.act(np.array([[0] * self.state_size]))
-        self._learn()
     def get_name(self):
         return "DQN"
     def get_weigths(self):
@@ -387,8 +357,6 @@ class DQNPolicy:
 
 
 Experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
-
-
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
 
