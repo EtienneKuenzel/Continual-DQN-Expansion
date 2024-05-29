@@ -451,7 +451,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         policy.network_rotation(normalized_score)
 
                #a.append(train_env.return_agent_pos())
-        if j >= 1150000:
+        if j >= 640000:#1150000:
             print("networksteps over 1  500 000")
             break
         t.get("function").append(policy.get_activation())
@@ -484,8 +484,8 @@ if __name__ == "__main__":
     parser.add_argument("--gamma", help="discount factor", default=0.99, type=float)
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
-    parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=256, type=int)
-    parser.add_argument("--layer_count", help="count of layers", default=4, type=int)
+    parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=1024, type=int)
+    parser.add_argument("--layer_count", help="count of layers", default=2, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)

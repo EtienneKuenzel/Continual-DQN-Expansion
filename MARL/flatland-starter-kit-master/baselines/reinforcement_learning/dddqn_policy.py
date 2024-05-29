@@ -62,16 +62,9 @@ class Continual_DQN_Expansion():
         self.act_rotation = 1
         #called with new Task
         networks_copy = self.networks[-1][:]
-        max_score = networks_copy[0].score
-        max_score_index = 0
-        a = -1
-        for x in networks_copy:
-            a+=1
-            if max_score < x.score:
-                max_score_index = a
         if len(networks_copy) == 1:
             #adding the current network to the past stack
-            self.networks.insert(len(self.networks) - 1, networks_copy[:])
+            #self.networks.insert(len(self.networks) - 1, networks_copy[:])
 
             #aadding PAU to new stack
             self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
@@ -84,81 +77,35 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-             if False:#max_score_index == 0:
-                print("EWC ist besser")
-                self.networkEP[-1][0] = self.networkEP[-1][0] + "+"
-                self.networkEP.append(["EE","EP"])
-                #add old networks to old stack
-                self.networks.insert(len(self.networks) -1, networks_copy[:])
-                # pau löschen
-                self.networks[-1].pop()
-                # Adding PAU Network fertig,
-                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
-                self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
-                                                    self.networks[-1][0].qnetwork_target,
-                                                    self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
-                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
-                                                    self.networks[-1][0].p_old)
-
-                # Adding EWC fertig
-                self.networks[-1][0].update_ewc()
-             else:
-                print("PAU ist besser")
-                self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
-                self.networkEP.append(["EE","EP","PE","PP","3P"])
-                # add old networks to old stack
-                self.networks.insert(len(self.networks) - 1, networks_copy[:])
-                # pau löschen
-                # Adding PAU Network fertig,
-                #[[],[E,P],[E,P]]
-                self.networks[-1].insert(1,DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
-                self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
-                                                    self.networks[-1][0].qnetwork_target,
-                                                    self.networks[-1][0].optimizer, self.networks[-1][0].ewc_loss, self.networks[-1][0].memory,
-                                                    self.networks[-1][0].loss, self.networks[-1][0].params,
-                                                    self.networks[-1][0].p_old)
-                #[[],[E,P],[E,EP, P]]
-                # Adding EWC fertig
-                self.networks[-1][0].update_ewc()
-                #[[],[E,P],[EE,EP, P]]
-                self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][2].get_weigths()))
-                self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
-                                                    self.networks[-1][2].qnetwork_target,
-                                                    self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
-                                                    self.networks[-1][2].loss, self.networks[-1][2].params,
-                                                    self.networks[-1][2].p_old)
-                #[[],[E,P],[EE,EP, PE, PP]]
-                # Adding EWC fertig
-                self.networks[-1][2].update_ewc()
-                self.networks[-1][2].freeze = True
-                #[[],[E,P],[EE,EP,PE,PP]]
-
-                """                #Adding Theta3 pau gemischt mit ewc
-                #claculating avg of weights and network params
-
-                theta1_net_param = self.networks[-2][0].extract_nn_state_dict()
-                theta2_net_param = self.networks[-1][0].extract_nn_state_dict()
-                
-                
-                theta1_layer1, theta1_layer2 = self.networks[-2][0].get_weigths()
-                theta2_layer1, theta2_layer2 = self.networks[-1][0].get_weigths()
-
-                theta1_layer1_nom, theta1_layer1_denom = theta1_layer1
-                theta1_layer2_nom, theta1_layer2_denom = theta1_layer2
-                theta2_layer1_nom, theta2_layer1_denom = theta2_layer1
-                theta2_layer2_nom, theta2_layer2_denom = theta2_layer2
-
-                theta3_layer1 = (theta1_layer1_nom + theta2_layer1_nom)/2, (theta1_layer1_denom + theta2_layer1_denom)/2
-                theta3_layer2 = (theta1_layer2_nom + theta2_layer2_nom)/2, (theta1_layer2_denom + theta2_layer2_denom)/2
-                theta3_weigths = [theta3_layer1, theta3_layer2]
-                theta3_weigths = [(t1.detach(), t2.detach()) for t1, t2 in theta3_weigths]
-                self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=theta3_weigths))
-                #adding avg network params
-                averaged_state_dict = {}
-                for key in theta1_net_param.keys():
-                    averaged_state_dict[key] = (theta1_net_param[key] + theta2_net_param[key]) / 2
-                self.networks[-1][-1].load_nn_state_dict(averaged_state_dict)
-                # [[],[E,P],[EE,EP,PE,PP,3P]]"""
+            print("PAU ist besser")
+            self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
+            self.networkEP.append(["EE","EP","PE","PP","3P"])
+            # add old networks to old stack
+            self.networks.insert(len(self.networks) - 1, networks_copy[:])
+            # pau löschen
+            # Adding PAU Network fertig,
+            #[[],[E,P],[E,P]]
+            self.networks[-1].insert(1,DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+            self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
+                                                self.networks[-1][0].qnetwork_target,
+                                                self.networks[-1][0].optimizer, self.networks[-1][0].ewc_loss, self.networks[-1][0].memory,
+                                                self.networks[-1][0].loss, self.networks[-1][0].params,
+                                                self.networks[-1][0].p_old)
+            #[[],[E,P],[E,EP, P]]
+            # Adding EWC fertig
+            self.networks[-1][0].update_ewc()
+            #[[],[E,P],[EE,EP, P]]
+            self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][2].get_weigths()))
+            self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
+                                                self.networks[-1][2].qnetwork_target,
+                                                self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
+                                                self.networks[-1][2].loss, self.networks[-1][2].params,
+                                                self.networks[-1][2].p_old)
+            #[[],[E,P],[EE,EP, P, PP]]
+            # Adding EWC fertig
+            self.networks[-1][2].update_ewc()
+            self.networks[-1][2].freeze = True
+            #[[],[E,P],[EE,EP,PE,PP]]
         self.reset_scores()
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode
@@ -223,9 +170,9 @@ class DQNPolicy:
         self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
         self.t_step = 0
     def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params, oldp):
-        self.qnetwork_local = ql
-        self.qnetwork_target = qt
-        self.optimizer = opt
+        #self.qnetwork_local = ql#copy.deepcopy(ql)
+        #self.qnetwork_target =qt #copy.deepcopy(qt)
+        self.optimizer = copy.deepcopy(opt)
         self.ewc_loss = ewc_loss
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
         self.loss = loss
