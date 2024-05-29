@@ -68,12 +68,11 @@ class Continual_DQN_Expansion():
 
             #aadding PAU to new stack
             self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
-            self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
+            self.networks[-1][-1].set_parameters(self.networks[-1][0].qnetwork_local,
                                                 self.networks[-1][0].qnetwork_target,
                                                 self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
                                                 self.networks[-1][0].loss, self.networks[-1][0].params,
                                                 self.networks[-1][0].p_old)
-
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
@@ -148,7 +147,7 @@ class DQNPolicy:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
             self.weights = [a] * parameters.layer_count
         else:
-            self.weights = initialweights
+            self.weights = copy.deepcopy(initialweights)
 
         if parameters.use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda:2")
@@ -170,14 +169,15 @@ class DQNPolicy:
         self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
         self.t_step = 0
     def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params, oldp):
-        #self.qnetwork_local = ql#copy.deepcopy(ql)
-        #self.qnetwork_target =qt #copy.deepcopy(qt)
-        self.optimizer = copy.deepcopy(opt)
+        self.qnetwork_local.load_state_dict(ql.state_dict())
+        self.qnetwork_target.load_state_dict(qt.state_dict())
+
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
         self.ewc_loss = ewc_loss
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
         self.loss = loss
         self.params = params
-        self.p_old = oldp
+        self.p_old = copy.deepcopy(oldp)
     def expansion(self):
         self.update_ewc()
     def act(self, handle, state, eps=0.):
@@ -228,7 +228,6 @@ class DQNPolicy:
             loss += _loss.sum()
         return loss
     def update_ewc(self):
-
         self.qnetwork_local = self.qnetwork_local.to(self.device)
         fisher_matrix = self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
         self.ewc_loss += self.get_ewc_loss(self.qnetwork_local, fisher_matrix, self.p_old).to(self.device)
