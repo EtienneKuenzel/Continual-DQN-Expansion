@@ -118,14 +118,19 @@ class Continual_DQN_Expansion():
         return self.networkEP
 
     def get_activation(self):
-        return str(self.networks[-1][self.act_rotation].get_weigths())
+        result = []
+        for param_tuple in self.networks[-1][self.act_rotation].get_weigths():
+            a, b = param_tuple
+            result.append([a.tolist(), b.tolist()])
+
+        return result
     def get_net(self):
         return self.act_rotation
 
 
 
 class DQNPolicy:
-    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=False, initialweights=0):
         self.evaluation_mode = evaluation_mode
         self.state_size = state_size
         self.action_size = action_size
@@ -179,7 +184,8 @@ class DQNPolicy:
         self.params = params
         self.p_old = copy.deepcopy(oldp)
     def expansion(self):
-        self.update_ewc()
+        pass
+        #self.update_ewc()
     def act(self, handle, state, eps=0.):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
@@ -298,7 +304,15 @@ class DQNPolicy:
         pass
     def get_expansion_code(self):
         return [["DQNwithEWC"]]
+    def get_activation(self):
+        result = []
+        for param_tuple in self.get_weigths():
+            a, b = param_tuple
+            result.append([a.tolist(), b.tolist()])
 
+        return result
+    def get_net(self):
+        return "1"
 
 
 

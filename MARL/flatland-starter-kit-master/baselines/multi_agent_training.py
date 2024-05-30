@@ -451,7 +451,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         policy.network_rotation(normalized_score)
 
                #a.append(train_env.return_agent_pos())
-        if j >= 640000:#1150000:
+        if j >= 1150000:
             print("networksteps over 1  500 000")
             break
         t.get("function").append(policy.get_activation())
@@ -494,7 +494,7 @@ if __name__ == "__main__":
 
 
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
-    policies = [Continual_DQN_Expansion]
+    policies = [DQNPolicy]
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     m = {'layer': [], 'type': []}
@@ -502,7 +502,7 @@ if __name__ == "__main__":
     a=[]
     start_time = time.time()
     for x in policies:
-        for y in ["2"]:
+        for y in ["3"]:
             for z in range(1):
                 print("--------")
                 print(x)
