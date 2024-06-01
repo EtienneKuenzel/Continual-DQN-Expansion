@@ -19,8 +19,7 @@ from reinforcement_learning.model import DQN, Network
 from reinforcement_learning.policy import Policy
 torch.set_printoptions(precision=5)
 
-"""Variablen Parameter übertrag nocheinmal überprüfen, 
-   besonders wenn es um ewcvariablen geht"""
+
 
 class Continual_DQN_Expansion():
     """Continual DDQN Expansion(CDE)"""
@@ -36,19 +35,7 @@ class Continual_DQN_Expansion():
         self.evaluation_mode = False
         self.networkEP = [["N"],["E","P"]]
     def act(self, handle, state, eps=0.):
-        if not self.evaluation_mode:
-            return self.networks[-1][self.act_rotation].act(handle, state, eps)
-        else:
-            networks_copy = self.networks[-1][:]
-            max_score = networks_copy[0].score
-            max_score_index = 0
-            a = -1
-            for x in networks_copy:
-                a += 1
-                if max_score < x.score:
-                    max_score_index = a
-            self.networkEP[-1][max_score_index] = "+"
-            return self.networks[-1][max_score_index].act(handle,state,eps)
+        return self.networks[-1][self.act_rotation].act(handle, state, eps)
     def network_rotation(self, score):
         self.networks[-1][self.act_rotation].score_try +=1
         self.networks[-1][self.act_rotation].score = (self.networks[-1][self.act_rotation].score + score)/ self.networks[-1][self.act_rotation].score_try

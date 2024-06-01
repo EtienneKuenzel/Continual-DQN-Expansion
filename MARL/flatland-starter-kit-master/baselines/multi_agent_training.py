@@ -256,7 +256,7 @@ def train_agent(train_params, policy, curriculum, render=False):
     a = 0
     for episode_idx in range(n_episodes):
         if curriculum == "1":
-            train_env = create_rail_env_5(tree_observation)
+            train_env = create_pathfinding(tree_observation, 16)
         if curriculum == "2":
             train_env = create_rail_env_1(tree_observation)
             if j > 500:
@@ -331,8 +331,6 @@ def train_agent(train_params, policy, curriculum, render=False):
                 policy.reset_scores()
                 evaluation = True
                 train_env = make_custom_training(tree_observation)
-            if j > 1075000:
-                policy.set_evaluation_mode(True)
         if curriculum == "4":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 65000:
@@ -450,12 +448,13 @@ def train_agent(train_params, policy, curriculum, render=False):
         r.get("algo").append(policy.get_name())
         policy.network_rotation(normalized_score)
 
-               #a.append(train_env.return_agent_pos())
-        if j >= 1150000:
-            print("networksteps over 1  500 000")
-            break
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
+               #a.append(train_env.return_agent_pos())
+        if j >= 1300000:
+            print("networksteps over 1  500 000")
+            break
+
     a = 0
     for x in policy.get_expansion_code():
         a += 1
@@ -494,7 +493,7 @@ if __name__ == "__main__":
 
 
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
-    policies = [DQNPolicy]
+    policies = [Continual_DQN_Expansion]
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     m = {'layer': [], 'type': []}
@@ -503,7 +502,7 @@ if __name__ == "__main__":
     start_time = time.time()
     for x in policies:
         for y in ["3"]:
-            for z in range(1):
+            for z in range(5):
                 print("--------")
                 print(x)
                 print(y)
