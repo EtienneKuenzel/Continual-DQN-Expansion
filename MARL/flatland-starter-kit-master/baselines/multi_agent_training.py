@@ -448,6 +448,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         r.get("algo").append(policy.get_name())
         policy.network_rotation(normalized_score)
 
+        t.get("networksteps").append(j)
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
                #a.append(train_env.return_agent_pos())
@@ -497,12 +498,12 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     m = {'layer': [], 'type': []}
-    t = {'function': [], 'type': []}
+    t = {'networksteps': [],'function': [], 'type': []}
     a=[]
     start_time = time.time()
     for x in policies:
-        for y in ["3"]:
-            for z in range(5):
+        for y in ["2"]:
+            for z in range(1):
                 print("--------")
                 print(x)
                 print(y)

@@ -117,7 +117,7 @@ class Continual_DQN_Expansion():
 
 
 class DQNPolicy:
-    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=False, initialweights=0):
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
         self.evaluation_mode = evaluation_mode
         self.state_size = state_size
         self.action_size = action_size
@@ -228,7 +228,6 @@ class DQNPolicy:
 
         last_device = self.device
         self.device = torch.device("cpu")
-
         self.retain_graph = True
         self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
         self.p_old = {n: p.clone().detach().to(self.device) for n, p in self.params.items()}
