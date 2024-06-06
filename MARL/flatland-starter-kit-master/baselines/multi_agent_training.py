@@ -255,9 +255,9 @@ def train_agent(train_params, policy, curriculum, render=False):
     n_episodes = train_params.n_episodes
     a = 0
     for episode_idx in range(n_episodes):
-        if curriculum == "1":
+        if curriculum == "no":
             train_env = create_pathfinding(tree_observation, 16)
-        if curriculum == "2":
+        if curriculum == "test":
             train_env = create_rail_env_1(tree_observation)
             if j > 500:
                 if a == 0:
@@ -278,24 +278,11 @@ def train_agent(train_params, policy, curriculum, render=False):
             if j > 2000:
                 policy.set_evaluation_mode(True)
                 break
-            """if j > 1500:
-                if a == 2:
-                    print("Expansion")
-                    policy.expansion()
-                    a =3
-                train_env = create_rail_env_3(tree_observation)
-            if j > 2000:
-                if a == 2:
-                    print("Expansion")
-                    policy.expansion()
-                    a =3
-            if j > 600000:
-                train_env = create_rail_env_4(tree_observation)"""
             if j > 800000:
                 train_env = create_rail_env_5(tree_observation)
             if j > 1000000:
                 train_env = create_rail_env_5(tree_observation)
-        if curriculum == "3":
+        if curriculum == "custom":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 80000:
                 train_env = create_pathfinding(tree_observation, 8)
@@ -331,7 +318,7 @@ def train_agent(train_params, policy, curriculum, render=False):
                 policy.reset_scores()
                 evaluation = True
                 train_env = make_custom_training(tree_observation)
-        if curriculum == "4":
+        if curriculum == "customr":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 65000:
                 train_env = create_pathfinding(tree_observation, 8)
@@ -490,41 +477,36 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
     parser.add_argument("--render", help="render 1 episode in 100", default=False, type=bool)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, no, simple, custom, customr", default="test", type=str)
+    parser.add_argument("--policy", help="choose policy: Continual_DQN_Expansion", default=Continual_DQN_Expansion, type=type)
     training_params = parser.parse_args()
-
-
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
-    policies = [Continual_DQN_Expansion]
+
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     m = {'layer': [], 'type': []}
     t = {'networksteps': [],'function': [], 'type': []}
     a=[]
     start_time = time.time()
-    for x in policies:
-        for y in ["2"]:
-            for z in range(1):
-                print("--------")
-                print(x)
-                print(y)
-                print(z)
-                train_agent(training_params, x, y)
-                print("______________")
+    for z in range(1):
+        print(z)
+        train_agent(training_params, training_params.policy, training_params.curriculum)
 
-    with open("completions.csv", "w") as outfile1:
+    with open("completions_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile1:
         writer = csv.writer(outfile1)
         writer.writerow(r.keys())
         writer.writerows(zip(*r.values()))
 
-    with open("score.csv", "w") as outfile:
+    with open("score_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(d.keys())
         writer.writerows(zip(*d.values()))
-    with open("CDE.csv", "w") as outfile:
+
+    with open("CDE_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(m.keys())
         writer.writerows(zip(*m.values()))
-    with open("weights.csv", "w") as outfile:
+    with open("weights_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(t.keys())
         writer.writerows(zip(*t.values()))
