@@ -29,7 +29,7 @@ class Continual_DQN_Expansion():
         self.action_size = action_size
         self.parameters = parameters
         self.evaluation_mode = evaluation_mode
-        self.networks[0].append(DQNPolicy(state_size,action_size,parameters,evaluation_mode))
+        self.networks[0].append(subCDE_Policy(state_size, action_size, parameters, evaluation_mode))
         self.x = 0
         self.act_rotation = 0
         self.evaluation_mode = False
@@ -54,7 +54,7 @@ class Continual_DQN_Expansion():
             #self.networks.insert(len(self.networks) - 1, networks_copy[:])
 
             #aadding PAU to new stack
-            self.networks[-1].append(DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+            self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
             self.networks[-1][-1].set_parameters(self.networks[-1][0].qnetwork_local,
                                                 self.networks[-1][0].qnetwork_target,
                                                 self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
@@ -71,7 +71,7 @@ class Continual_DQN_Expansion():
             # pau löschen
             # Adding PAU Network fertig,
             #[[],[E,P],[E,P]]
-            self.networks[-1].insert(1,DQNPolicy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False,initialweights=self.networks[-1][0].get_weigths()))
+            self.networks[-1].insert(1, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
             self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
                                                 self.networks[-1][0].qnetwork_target,
                                                 self.networks[-1][0].optimizer, self.networks[-1][0].ewc_loss, self.networks[-1][0].memory,
@@ -81,7 +81,7 @@ class Continual_DQN_Expansion():
             # Adding EWC fertig
             self.networks[-1][0].update_ewc()
             #[[],[E,P],[EE,EP, P]]
-            self.networks[-1].insert(3, DQNPolicy(self.state_size, self.action_size, self.parameters,self.evaluation_mode, freeze=False,initialweights=self.networks[-1][2].get_weigths()))
+            self.networks[-1].insert(3, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][2].get_weigths()))
             self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
                                                 self.networks[-1][2].qnetwork_target,
                                                 self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
@@ -101,8 +101,6 @@ class Continual_DQN_Expansion():
             x.score_try = 0
     def get_name(self):
         return "CDE" + str(self.act_rotation)
-    def get_expansion_code(self):
-        return self.networkEP
 
     def get_activation(self):
         result = []
@@ -114,9 +112,7 @@ class Continual_DQN_Expansion():
     def get_net(self):
         return self.act_rotation
 
-
-
-class DQNPolicy:
+class subCDE_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
         self.evaluation_mode = evaluation_mode
         self.state_size = state_size
@@ -288,8 +284,6 @@ class DQNPolicy:
         pass
     def reset_scores(self):
         pass
-    def get_expansion_code(self):
-        return [["DQNwithEWC"]]
     def get_activation(self):
         result = []
         for param_tuple in self.get_weigths():

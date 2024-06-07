@@ -30,7 +30,7 @@ sys.path.append(str(base_dir))
 
 from utils.timer import Timer
 from utils.observation_utils import normalize_observation
-from reinforcement_learning.dddqn_policy import DQNPolicy, Continual_DQN_Expansion
+from reinforcement_learning.dddqn_policy import Continual_DQN_Expansion
 from reinforcement_learning.PPO import PPOPolicy, A2CPolicy,TD3Policy
 from reinforcement_learning.ordered_policy import OrderedPolicy
 #from reinforcement_learning.cc_transformer import CentralizedCriticModel, CcTransformer
@@ -252,25 +252,26 @@ def train_agent(train_params, policy, curriculum, render=False):
 
     # policy
     policy = policy(state_size, action_size, train_params)
-    n_episodes = train_params.n_episodes
     a = 0
-    for episode_idx in range(n_episodes):
+    while True:
         if curriculum == "no":
             train_env = create_pathfinding(tree_observation, 16)
+            if j > 1000000:
+                train_env = make_custom_training(tree_observation)
         if curriculum == "test":
-            train_env = create_rail_env_1(tree_observation)
+            train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
             if j > 500:
                 if a == 0:
                     print("Expansion")
                     policy.expansion()
                     a =1
-                train_env = create_rail_env_2(tree_observation)
+                train_env = create_pathfinding(tree_observation, 4)
             if j > 1000:
                 if a == 1:
                     print("Expansion")
                     policy.expansion()
                     a =2
-                train_env = create_rail_env_3(tree_observation)
+                train_env = create_malfunction(tree_observation, 5)
             if j > 1500:
                 policy.reset_scores()
                 evaluation = True
@@ -278,10 +279,7 @@ def train_agent(train_params, policy, curriculum, render=False):
             if j > 2000:
                 policy.set_evaluation_mode(True)
                 break
-            if j > 800000:
-                train_env = create_rail_env_5(tree_observation)
-            if j > 1000000:
-                train_env = create_rail_env_5(tree_observation)
+
         if curriculum == "custom":
             train_env = create_pathfinding(tree_observation, 4)
             if j > 80000:
@@ -351,7 +349,7 @@ def train_agent(train_params, policy, curriculum, render=False):
             if j > 975000:
                 train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
             if j > 1000000:
-                train_env = create_rail_env_5(tree_observation)
+                train_env = make_custom_training(tree_observation)
 
         if render: env_renderer = RenderTool(train_env, gl="PGL")
 
@@ -443,26 +441,15 @@ def train_agent(train_params, policy, curriculum, render=False):
             print("networksteps over 1  500 000")
             break
 
-    a = 0
-    for x in policy.get_expansion_code():
-        a += 1
-        for y in x:
-            m.get("layer").append(a)
-            m.get("type").append(y)
-
 
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-n", "--n_episodes", help="number of episodes to run", default= 100000000000, type=int)
-    parser.add_argument("-t", "--training_env_config", help="training config id (eg 0 for Test_0)", default=0, type=int)
-    parser.add_argument("-e", "--evaluation_env_config", help="evaluation config id (eg 0 for Test_0)", default=0, type=int)
-    parser.add_argument("--n_evaluation_episodes", help="number of evaluation episodes", default=25, type=int)
-    parser.add_argument("--checkpoint_interval", help="checkpoint interval", default=100, type=int)
     parser.add_argument("--eps_start", help="max exploration", default=1, type=float)
     parser.add_argument("--eps_end", help="min exploration", default=0.01, type=float)
     parser.add_argument("--eps_decay", help="exploration decay", default=0.9, type=float)
+
     parser.add_argument("--buffer_size", help="replay buffer size", default=int(1e6), type=int)
     parser.add_argument("--buffer_min_size", help="min buffer size to start training", default=0, type=int)
     parser.add_argument("--restore_replay_buffer", help="replay buffer to restore", default="", type=str)
@@ -478,7 +465,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
     parser.add_argument("--render", help="render 1 episode in 100", default=False, type=bool)
     parser.add_argument("--curriculum", help="choose a curriculum: test, no, simple, custom, customr", default="test", type=str)
-    parser.add_argument("--policy", help="choose policy: Continual_DQN_Expansion", default=Continual_DQN_Expansion, type=type)
+    parser.add_argument("--policy", help="choose policy: CDE", default="CDE", type=str)
+    parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
 
@@ -487,11 +475,16 @@ if __name__ == "__main__":
     m = {'layer': [], 'type': []}
     t = {'networksteps': [],'function': [], 'type': []}
     a=[]
+    if training_params.policy == "DQN":
+        policy = Continual_DQN_Expansion
+    if training_params.policy == "CDE":
+        policy = Continual_DQN_Expansion
     start_time = time.time()
-    for z in range(1):
+    for z in range(training_params.runs):
         print(z)
-        train_agent(training_params, training_params.policy, training_params.curriculum)
+        train_agent(training_params,policy, training_params.curriculum)
 
+    print(time.time() - start_time)
     with open("completions_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile1:
         writer = csv.writer(outfile1)
         writer.writerow(r.keys())
@@ -502,15 +495,10 @@ if __name__ == "__main__":
         writer.writerow(d.keys())
         writer.writerows(zip(*d.values()))
 
-    with open("CDE_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
-        writer = csv.writer(outfile)
-        writer.writerow(m.keys())
-        writer.writerows(zip(*m.values()))
     with open("weights_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(t.keys())
         writer.writerows(zip(*t.values()))
-    print(time.time() - start_time)
 
     """with open("rail_usage.csv", 'w', newline='') as csv_file:
         # Create a CSV writer object
