@@ -224,6 +224,11 @@ def epsilon(x):
         return 1
     else:
         return 1/(1.000005**x)
+def write_to_csv(filename, data):
+    with open(filename, "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(data.keys())
+        writer.writerows(zip(*data.values()))
 def train_agent(train_params, policy, curriculum, render=False):
     reset = 0
     j = 0
@@ -485,22 +490,7 @@ if __name__ == "__main__":
         train_agent(training_params,policy, training_params.curriculum)
 
     print(time.time() - start_time)
-    with open("completions_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile1:
-        writer = csv.writer(outfile1)
-        writer.writerow(r.keys())
-        writer.writerows(zip(*r.values()))
-
-    with open("score_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
-        writer = csv.writer(outfile)
-        writer.writerow(d.keys())
-        writer.writerows(zip(*d.values()))
-
-    with open("weights_" + str(training_params.layer_count) + "x" + str(training_params.hidden_size)+"_"+str(training_params.curriculum)+ ".csv", "w") as outfile:
-        writer = csv.writer(outfile)
-        writer.writerow(t.keys())
-        writer.writerows(zip(*t.values()))
-
-    """with open("rail_usage.csv", 'w', newline='') as csv_file:
-        # Create a CSV writer object
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerows(a)"""
+    base_filename = f"{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
+    write_to_csv(f"completions_{base_filename}.csv", r)
+    write_to_csv(f"score_{base_filename}.csv", d)
+    write_to_csv(f"weights_{base_filename}.csv", t)
