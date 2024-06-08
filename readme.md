@@ -1,9 +1,7 @@
 
-# CAP-Net #
-
-
+# Continual-DQN-Expansion #
 - Code for Continual-DQN-Expansion 
-
+- Code to evaluate Results
 ## Simulator ##
 
 - Simulator used is Flatland-RL : https://github.com/flatland-association/flatland-rl
