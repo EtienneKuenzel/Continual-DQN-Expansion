@@ -31,15 +31,6 @@ import time
 
 
 
-
-"""
-This file shows how to train multiple agents using areinforcement learning approach.
-After training an agent, you can submit it straight away to the Flatland 3 challenge!
-
-Agent documentation: https://flatland.aicrowd.com/tutorials/rl/multi-agent.html
-Submission documentation: https://flatland.aicrowd.com/challenges/flatland3/first-submission.html
-"""
-##sparseline env with growing complexity
 def create_rail_env_1(tree_observation):
     # Break agents from time to time
     malfunction_parameters = MalfunctionParameters(
@@ -220,8 +211,8 @@ def write_to_csv(filename, data):
         writer = csv.writer(outfile)
         writer.writerow(data.keys())
         writer.writerows(zip(*data.values()))
+
 def train_agent(train_params, policy, curriculum, render=False):
-    reset = 0
     j = 0
     evaluation = False
     episodes = []
@@ -351,7 +342,7 @@ def train_agent(train_params, policy, curriculum, render=False):
 
 
         # Reset environment
-        obs, info = train_env.reset(regenerate_rail=True, regenerate_schedule=True)# schedule = false for custom
+        obs, info = train_env.reset(regenerate_rail=True, regenerate_schedule=True)
 
         # Init these values after reset()
         max_steps = train_env._max_episode_steps*3
@@ -441,19 +432,15 @@ def train_agent(train_params, policy, curriculum, render=False):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--eps_start", help="max exploration", default=1, type=float)
-    parser.add_argument("--eps_end", help="min exploration", default=0.01, type=float)
-    parser.add_argument("--eps_decay", help="exploration decay", default=0.9, type=float)
 
     parser.add_argument("--buffer_size", help="replay buffer size", default=int(1e6), type=int)
     parser.add_argument("--buffer_min_size", help="min buffer size to start training", default=0, type=int)
-    parser.add_argument("--restore_replay_buffer", help="replay buffer to restore", default="", type=str)
-    parser.add_argument("--save_replay_buffer", help="save replay buffer at each evaluation interval", default=False, type=bool)
     parser.add_argument("--batch_size", help="minibatch size", default=128, type=int)
     parser.add_argument("--gamma", help="discount factor", default=0.99, type=float)
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
-    parser.add_argument("--hidden_size", help="hidden size (2 fc layers)", default=1024, type=int)
+
+    parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)
     parser.add_argument("--layer_count", help="count of layers", default=2, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
@@ -467,20 +454,20 @@ if __name__ == "__main__":
 
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
-    m = {'layer': [], 'type': []}
     t = {'networksteps': [],'function': [], 'type': []}
     a=[]
-    if training_params.policy == "DQN":
-        policy = DQN_Policy
-    elif training_params.policy == "CDE":
-        policy = Continual_DQN_Expansion
-    elif training_params.policy == "EWC":
-        policy = DQN_EWC_Policy
-    elif training_params.policy == "PAU":
-        policy = DQN_PAU_Policy
-    else:
+    policy_mapping = {
+        "DQN": DQN_Policy,
+        "CDE": Continual_DQN_Expansion,
+        "EWC": DQN_EWC_Policy,
+        "PAU": DQN_PAU_Policy
+    }
+
+    policy = policy_mapping.get(training_params.policy)
+    if policy is None:
         print("Error: Non-Existent Policy")
         sys.exit()
+
     start_time = time.time()
     for z in range(training_params.runs):
         print(z)

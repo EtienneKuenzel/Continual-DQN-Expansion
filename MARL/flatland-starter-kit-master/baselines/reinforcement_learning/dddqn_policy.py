@@ -63,7 +63,6 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-            print("PAU ist besser")
             self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
             self.networkEP.append(["EE","EP","PE","PP","3P"])
             # add old networks to old stack
