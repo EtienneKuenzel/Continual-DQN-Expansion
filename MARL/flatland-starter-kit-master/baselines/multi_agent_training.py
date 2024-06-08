@@ -1,16 +1,13 @@
-from collections import deque
-from datetime import datetime
+
 import os
 import random
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from pprint import pprint
 from flatland.utils.rendertools import RenderTool
-import psutil
+
 import csv
-from matplotlib import pyplot as plt
-import torch
+
 import numpy as np
 
 
@@ -28,14 +25,8 @@ from flatland.envs.predictions import ShortestPathPredictorForRailEnv
 base_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(base_dir))
 
-from utils.timer import Timer
 from utils.observation_utils import normalize_observation
-from reinforcement_learning.dddqn_policy import Continual_DQN_Expansion
-from reinforcement_learning.PPO import PPOPolicy, A2CPolicy,TD3Policy
-from reinforcement_learning.ordered_policy import OrderedPolicy
-#from reinforcement_learning.cc_transformer import CentralizedCriticModel, CcTransformer
-import seaborn as sns
-import pandas as pd
+from reinforcement_learning.dddqn_policy import Continual_DQN_Expansion, DQN_Policy, DQN_EWC_Policy, DQN_PAU_Policy
 import time
 
 
@@ -363,7 +354,6 @@ def train_agent(train_params, policy, curriculum, render=False):
         obs, info = train_env.reset(regenerate_rail=True, regenerate_schedule=True)# schedule = false for custom
 
         # Init these values after reset()
-
         max_steps = train_env._max_episode_steps*3
         action_count = [0] * action_size
         action_dict = dict()
@@ -443,7 +433,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         t.get("type").append(policy.get_net())
                #a.append(train_env.return_agent_pos())
         if j >= 1300000:
-            print("networksteps over 1  500 000")
+            print("networksteps over 1  300 000")
             break
 
 
@@ -468,9 +458,9 @@ if __name__ == "__main__":
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
-    parser.add_argument("--render", help="render 1 episode in 100", default=False, type=bool)
-    parser.add_argument("--curriculum", help="choose a curriculum: test, no, simple, custom, customr", default="test", type=str)
-    parser.add_argument("--policy", help="choose policy: CDE", default="CDE", type=str)
+
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
@@ -481,9 +471,16 @@ if __name__ == "__main__":
     t = {'networksteps': [],'function': [], 'type': []}
     a=[]
     if training_params.policy == "DQN":
+        policy = DQN_Policy
+    elif training_params.policy == "CDE":
         policy = Continual_DQN_Expansion
-    if training_params.policy == "CDE":
-        policy = Continual_DQN_Expansion
+    elif training_params.policy == "EWC":
+        policy = DQN_EWC_Policy
+    elif training_params.policy == "PAU":
+        policy = DQN_PAU_Policy
+    else:
+        print("Error: Non-Existent Policy")
+        sys.exit()
     start_time = time.time()
     for z in range(training_params.runs):
         print(z)
