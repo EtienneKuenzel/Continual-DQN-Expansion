@@ -473,7 +473,7 @@ class DQN_Policy:
 
         return result
     def get_net(self):
-        return "1"
+        return "0"
 class DQN_EWC_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
         self.evaluation_mode = evaluation_mode
@@ -653,7 +653,7 @@ class DQN_EWC_Policy:
 
         return result
     def get_net(self):
-        return "1"
+        return "0"
 class DQN_PAU_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=False, initialweights=0):
         self.evaluation_mode = evaluation_mode
@@ -833,7 +833,7 @@ class DQN_PAU_Policy:
 
         return result
     def get_net(self):
-        return "1"
+        return "0"
 
 
 
