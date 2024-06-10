@@ -474,7 +474,7 @@ if __name__ == "__main__":
         train_agent(training_params,policy, training_params.curriculum)
 
     print(time.time() - start_time)
-    base_filename = f"{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
+    base_filename = f"{training_params.policy}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
     write_to_csv(f"completions_{base_filename}.csv", r)
     write_to_csv(f"score_{base_filename}.csv", d)
     write_to_csv(f"weights_{base_filename}.csv", t)

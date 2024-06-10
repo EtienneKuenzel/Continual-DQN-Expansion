@@ -26,3 +26,11 @@ Create Animation of PAU-Activation-Function
 ```
 python eval_weights.py --file="weights8x256.csv" --network="0" --layer=0
 ```
+
+Create Plot of Trainingand Evaluation-Completions/Score
+```
+python eval_training.py --file="score2x1024.csv" --type="score"
+```
+```
+python eval_training.py --file="completions2x1024.csv" --type="completions"
+```
