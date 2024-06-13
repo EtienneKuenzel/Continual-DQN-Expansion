@@ -251,12 +251,19 @@ def train_agent(train_params, policy, curriculum, render=False):
                 if a == 0:
                     print("Expansion")
                     policy.expansion()
+                    #f.get("networksteps").append(j)
+                    #f.get("function").append(policy.fisher_info())
+
+                    #f.get("type").append(policy.get_net())
                     a =1
                 train_env = create_pathfinding(tree_observation, 4)
             if j > 1000:
                 if a == 1:
                     print("Expansion")
                     policy.expansion()
+                    #f.get("networksteps").append(j)
+                    #f.get("function").append(policy.fisher_info())
+                    #f.get("type").append(policy.get_net())
                     a =2
                 train_env = create_malfunction(tree_observation, 5)
             if j > 1500:
@@ -455,6 +462,7 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     t = {'networksteps': [],'function': [], 'type': []}
+    #f = {'networksteps': [],'function': [], 'type': []}
     a=[]
     policy_mapping = {
         "DQN": DQN_Policy,
@@ -478,3 +486,4 @@ if __name__ == "__main__":
     write_to_csv(f"completions_{base_filename}.csv", r)
     write_to_csv(f"score_{base_filename}.csv", d)
     write_to_csv(f"weights_{base_filename}.csv", t)
+    #write_to_csv(f"fisher_{base_filename}.csv", f)

@@ -12,6 +12,7 @@ import torch.nn as nn
 import copy
 import os
 from torch.autograd import Variable
+import pandas as pd
 
 import numpy
 
@@ -100,7 +101,6 @@ class Continual_DQN_Expansion():
             x.score_try = 0
     def get_name(self):
         return "CDE" + str(self.act_rotation)
-
     def get_activation(self):
         result = []
         for param_tuple in self.networks[-1][self.act_rotation].get_weigths():
@@ -110,6 +110,8 @@ class Continual_DQN_Expansion():
         return result
     def get_net(self):
         return self.act_rotation
+    def get_fisher(self):
+        return self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
 
 class subCDE_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
@@ -579,8 +581,8 @@ class DQN_EWC_Policy:
         return loss
     def update_ewc(self):
         self.qnetwork_local = self.qnetwork_local.to(self.device)
-        fisher_matrix = self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
-        self.ewc_loss += self.get_ewc_loss(self.qnetwork_local, fisher_matrix, self.p_old).to(self.device)
+        self.fisher_matrix = self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
+        self.ewc_loss += self.get_ewc_loss(self.qnetwork_local, self.fisher_matrix, self.p_old).to(self.device)
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
 
         last_device = self.device
@@ -654,6 +656,22 @@ class DQN_EWC_Policy:
         return result
     def get_net(self):
         return "0"
+    def fisher_info(self):
+        a =[]
+        for x in self.fisher_matrix:
+            if "layer" in x:
+                b = []
+                if "weight" in x:
+                    for z in self.fisher_matrix[x]:
+                        for t in z:
+                            b.append(t.numpy())
+                elif "bias" in x:
+                    for z in self.fisher_matrix[x]:
+                        b.append(z.numpy())
+                a.append(b)
+        pd.DataFrame(a).dropna().to_csv('fisher_info.csv', index=False, header=False)
+
+        return pd.DataFrame(a)
 class DQN_PAU_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=False, initialweights=0):
         self.evaluation_mode = evaluation_mode
