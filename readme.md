@@ -36,6 +36,6 @@ python eval_training.py --file="completions2x1024.csv" --type="completions"
 ```
 ## Results ##
 <p float="left">
-  <img src="Evaluation\images\completions-comparison-layer size.png" width="50%" />
-  <img src="Evaluation\images\score-comparison-layer size.png" width="50%" />
+  <img src="Evaluation\images\completions-comparison-layer size.png" width="49%" />
+  <img src="Evaluation\images\score-comparison-layer size.png" width="49%" />
 </p>
