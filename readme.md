@@ -35,8 +35,7 @@ python eval_training.py --file="score2x1024.csv" --type="score"
 python eval_training.py --file="completions2x1024.csv" --type="completions"
 ```
 ## Results ##
-| Completions                                                   | Scores                                          |
-| ----------------------------------------------------- | --------------------------------------------- |
-| ![test](Evaluation\images\completions-comparison-layer size.png) | ![test](Evaluation\images\score-comparison-layer size.png) |
-
-<img title="Test" alt="Alt text" src="Evaluation\images\completions-comparison-layer-size.png">
+<p float="left">
+  <img src="Evaluation\images\completions-comparison-layer size.png" width="50%" />
+  <img src="Evaluation\images\score-comparison-layer size.png" width="50%" />
+</p>
