@@ -176,15 +176,6 @@ def create_pathfinding(tree_observation, size):
           number_of_agents=1,
           obs_builder_object=tree_observation,
           )
-def create_pathfinding_oldreward(tree_observation, size):
-    rail, rail_map, optionals = make_pathfinding_track(size)
-    return RailEnv1(width=rail_map.shape[1],
-          height=rail_map.shape[0],
-          rail_generator= rail_from_grid_transition_map(rail, optionals),
-          line_generator=sparse_line_generator(),
-          number_of_agents=1,
-          obs_builder_object=tree_observation,
-          )
 def create_malfunction(tree_observation, agent):
     rail, rail_map, optionals = make_malfunction_training(agent, 20)
     malfunction_parameters = MalfunctionParameters(
@@ -200,6 +191,7 @@ def create_malfunction(tree_observation, agent):
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
           obs_builder_object=tree_observation,
           )
+
 
 def epsilon(x):
     if x == 0:
@@ -239,115 +231,63 @@ def train_agent(train_params, policy, curriculum, render=False):
 
     # policy
     policy = policy(state_size, action_size, train_params)
-    a = 0
+    expansion_done = set()
     while True:
         if curriculum == "no":
             train_env = create_pathfinding(tree_observation, 16)
             if j > 1000000:
                 train_env = make_custom_training(tree_observation)
+                evaluation = True
         if curriculum == "test":
-            train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
-            if j > 500:
-                if a == 0:
+            expansion = [500, 1500]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
                     print("Expansion")
                     policy.expansion()
-                    #f.get("networksteps").append(j)
-                    #f.get("function").append(policy.fisher_info())
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (1500, make_custom_training(tree_observation)),
+                (1000, create_malfunction(tree_observation, 5)),
+                (500,  create_pathfinding(tree_observation, 4)),
+                (0,    create_deadlock(tree_observation, 2, 32, 100, 2))]
 
-                    #f.get("type").append(policy.get_net())
-                    a =1
-                train_env = create_pathfinding(tree_observation, 4)
-            if j > 1000:
-                if a == 1:
-                    print("Expansion")
-                    policy.expansion()
-                    #f.get("networksteps").append(j)
-                    #f.get("function").append(policy.fisher_info())
-                    #f.get("type").append(policy.get_net())
-                    a =2
-                train_env = create_malfunction(tree_observation, 5)
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold:
+                    train_env = env_func
             if j > 1500:
                 policy.reset_scores()
                 evaluation = True
-                train_env = make_custom_training(tree_observation)
             if j > 2000:
-                policy.set_evaluation_mode(True)
                 break
-
         if curriculum == "custom":
-            train_env = create_pathfinding(tree_observation, 4)
-            if j > 80000:
-                train_env = create_pathfinding(tree_observation, 8)
-            if j > 160000:
-                train_env = create_pathfinding(tree_observation, 16)
-            if j > 240000:
-                train_env = create_pathfinding(tree_observation, 32)
-            if j > 320000:
-                if a == 0:
-                    print("Expansion")
+            expansion = [320000, 640000, 1000000]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
                     policy.expansion()
-                    a = 1
-                train_env = create_malfunction(tree_observation, 5)
-            if j > 400000:
-                train_env = create_malfunction(tree_observation, 6)
-            if j > 480000:
-                train_env = create_malfunction(tree_observation, 7)
-            if j > 560000:
-                train_env = create_malfunction(tree_observation, 8)
-            if j > 640000:
-                if a == 1:
-                    print("Expansion")
-                    policy.expansion()
-                    a = 2
-                train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
-            if j > 720000:
-                train_env = create_deadlock(tree_observation, 2, 32, 80, 4)
-            if j > 800000:
-                train_env = create_deadlock(tree_observation, 4, 32, 60, 8)
-            if j > 880000:
-                train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (1000000, lambda: make_custom_training(tree_observation)),
+                (880000, lambda: create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (800000, lambda: create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (720000, lambda: create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (640000, lambda: create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (560000, lambda: create_malfunction(tree_observation, 8)),
+                (480000, lambda: create_malfunction(tree_observation, 7)),
+                (400000, lambda: create_malfunction(tree_observation, 6)),
+                (320000, lambda: create_malfunction(tree_observation, 5)),
+                (240000, lambda: create_pathfinding(tree_observation, 32)),
+                (160000, lambda: create_pathfinding(tree_observation, 16)),
+                (80000, lambda: create_pathfinding(tree_observation, 8)),
+                (0, lambda: create_pathfinding(tree_observation, 4))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
             if j > 1000000:
                 policy.reset_scores()
                 evaluation = True
-                train_env = make_custom_training(tree_observation)
-        if curriculum == "customr":
-            train_env = create_pathfinding(tree_observation, 4)
-            if j > 65000:
-                train_env = create_pathfinding(tree_observation, 8)
-            if j > 130000:
-                train_env = create_pathfinding(tree_observation, 16)
-            if j > 195000:
-                train_env = create_pathfinding(tree_observation, 32)
-            if j > 260000:
-                train_env = create_malfunction(tree_observation, 5)
-            if j > 325000:
-                train_env = create_malfunction(tree_observation, 6)
-            if j > 390000:
-                train_env = create_malfunction(tree_observation, 7)
-            if j > 455000:
-                train_env = create_malfunction(tree_observation, 8)
-            if j > 520000:
-                train_env = create_pathfinding(tree_observation, 32)
-            if j > 585000:
-                train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
-            if j > 650000:
-                train_env = create_deadlock(tree_observation, 2, 32, 80, 4)
-            if j > 715000:
-                train_env = create_deadlock(tree_observation, 4, 32, 60, 8)
-            if j > 780000:
-                train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
-            if j > 845000:
-                train_env = create_pathfinding(tree_observation, 32)
-            if j > 910000:
-                train_env = create_malfunction(tree_observation, 8)
-            if j > 975000:
-                train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
-            if j > 1000000:
-                train_env = make_custom_training(tree_observation)
+
 
         if render: env_renderer = RenderTool(train_env, gl="PGL")
-
-
         # Reset environment
         obs, info = train_env.reset(regenerate_rail=True, regenerate_schedule=True)
 
@@ -430,7 +370,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
                #a.append(train_env.return_agent_pos())
-        if j >= 1300000:
+        if j >= 1010000:
             print("networksteps over 1  300 000")
             break
 
@@ -454,7 +394,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
     parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="EWC", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
@@ -462,7 +402,6 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': []}
     r = {'networksteps': [], 'algo': [], 'completions': []}
     t = {'networksteps': [],'function': [], 'type': []}
-    #f = {'networksteps': [],'function': [], 'type': []}
     a=[]
     policy_mapping = {
         "DQN": DQN_Policy,
@@ -486,4 +425,3 @@ if __name__ == "__main__":
     write_to_csv(f"completions_{base_filename}.csv", r)
     write_to_csv(f"score_{base_filename}.csv", d)
     write_to_csv(f"weights_{base_filename}.csv", t)
-    #write_to_csv(f"fisher_{base_filename}.csv", f)

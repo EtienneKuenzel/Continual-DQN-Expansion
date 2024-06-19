@@ -131,7 +131,6 @@ def make_custom_rail() -> Tuple[GridTransitionMap, np.array]:
     rail = GridTransitionMap(width=rail_map.shape[1],
                              height=rail_map.shape[0], transitions=transitions)
     rail.grid = rail_map
-    print(rail_map[10][7])
     city_positions = [(12, 11), (13, 66), (8, 109)]
     train_stations = [[((8, 15), 0), ((9, 15), 1), ((11, 14), 2), ((13, 13), 3), ((15, 12), 4)], [
         ((7, 61), 0), ((8, 67), 1), ((9, 67), 2), ((12, 61), 3), ((13, 66), 4)], [

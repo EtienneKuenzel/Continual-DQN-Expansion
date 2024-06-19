@@ -17,7 +17,6 @@ import pandas as pd
 import numpy
 
 from reinforcement_learning.model import DQN, Network
-from reinforcement_learning.policy import Policy
 torch.set_printoptions(precision=5)
 
 
@@ -495,6 +494,7 @@ class DQN_EWC_Policy:
         self.retain_graph = False
         self.score = 0
         self.score_try = 0
+        self.counter = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
             self.weights = [a] * parameters.layer_count
@@ -532,6 +532,7 @@ class DQN_EWC_Policy:
         self.p_old = copy.deepcopy(oldp)
     def expansion(self):
         self.update_ewc()
+        self.fisher_info()
     def act(self, handle, state, eps=0.):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
@@ -669,8 +670,8 @@ class DQN_EWC_Policy:
                     for z in self.fisher_matrix[x]:
                         b.append(z.numpy())
                 a.append(b)
-        pd.DataFrame(a).dropna().to_csv('fisher_info.csv', index=False, header=False)
-
+        pd.DataFrame(a).dropna().to_csv( str(self.counter) + '_fisher_info.csv', index=False, header=False)
+        self.counter += 1
         return pd.DataFrame(a)
 class DQN_PAU_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=False, initialweights=0):
