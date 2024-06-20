@@ -665,10 +665,10 @@ class DQN_EWC_Policy:
                 if "weight" in x:
                     for z in self.fisher_matrix[x]:
                         for t in z:
-                            b.append(t.numpy())
+                            b.append(t.to('cpu').numpy())
                 elif "bias" in x:
                     for z in self.fisher_matrix[x]:
-                        b.append(z.numpy())
+                        b.append(z.to('cpu').numpy())
                 a.append(b)
         pd.DataFrame(a).dropna().to_csv( str(self.counter) + '_fisher_info.csv', index=False, header=False)
         self.counter += 1
