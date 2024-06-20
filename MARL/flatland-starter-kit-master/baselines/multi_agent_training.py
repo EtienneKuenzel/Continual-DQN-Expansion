@@ -266,19 +266,19 @@ def train_agent(train_params, policy, curriculum, render=False):
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
-                (1000000, lambda: make_custom_training(tree_observation)),
-                (880000, lambda: create_deadlock(tree_observation, 4, 32, 50, 16)),
-                (800000, lambda: create_deadlock(tree_observation, 4, 32, 60, 8)),
-                (720000, lambda: create_deadlock(tree_observation, 2, 32, 80, 4)),
-                (640000, lambda: create_deadlock(tree_observation, 2, 32, 100, 2)),
-                (560000, lambda: create_malfunction(tree_observation, 8)),
-                (480000, lambda: create_malfunction(tree_observation, 7)),
-                (400000, lambda: create_malfunction(tree_observation, 6)),
-                (320000, lambda: create_malfunction(tree_observation, 5)),
-                (240000, lambda: create_pathfinding(tree_observation, 32)),
-                (160000, lambda: create_pathfinding(tree_observation, 16)),
-                (80000, lambda: create_pathfinding(tree_observation, 8)),
-                (0, lambda: create_pathfinding(tree_observation, 4))]
+                (1000000, make_custom_training(tree_observation)),
+                (880000, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (800000, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (720000, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (640000, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (560000, create_malfunction(tree_observation, 8)),
+                (480000, create_malfunction(tree_observation, 7)),
+                (400000, create_malfunction(tree_observation, 6)),
+                (320000, create_malfunction(tree_observation, 5)),
+                (240000, create_pathfinding(tree_observation, 32)),
+                (160000, create_pathfinding(tree_observation, 16)),
+                (80000, create_pathfinding(tree_observation, 8)),
+                (0, create_pathfinding(tree_observation, 4))]
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
                     train_env = env_func
