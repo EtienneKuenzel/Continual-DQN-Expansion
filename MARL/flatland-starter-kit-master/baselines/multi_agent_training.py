@@ -13,8 +13,6 @@ import numpy as np
 
 from flatland.envs.step_utils.states import TrainState
 from flatland1.envs.rail_env import RailEnv
-from flatland1.envs.rail_env_1 import RailEnv as RailEnv1
-from flatland.envs.rail_generators import sparse_rail_generator
 from flatland.envs.line_generators import sparse_line_generator
 from flatland.envs.observations import TreeObsForRailEnv
 from flatland.envs.rail_generators import sparse_rail_generator, rail_from_grid_transition_map
@@ -25,10 +23,11 @@ from flatland.envs.predictions import ShortestPathPredictorForRailEnv
 base_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(base_dir))
 
-from utils.observation_utils import normalize_observation
 from reinforcement_learning.dddqn_policy import Continual_DQN_Expansion, DQN_Policy, DQN_EWC_Policy, DQN_PAU_Policy
-import time
+from observation_utils import normalize_observation
 
+import time
+import math
 
 
 def create_rail_env_1(tree_observation):
@@ -204,7 +203,7 @@ def write_to_csv(filename, data):
         writer.writerow(data.keys())
         writer.writerows(zip(*data.values()))
 
-def train_agent(train_params, policy, curriculum, render=False):
+def train_agent(train_params, policy, render=False):
     j = 0
     evaluation = False
     episodes = []
@@ -233,12 +232,12 @@ def train_agent(train_params, policy, curriculum, render=False):
     policy = policy(state_size, action_size, train_params)
     expansion_done = set()
     while True:
-        if curriculum == "no":
+        if training_params.curriculum == "no":
             train_env = create_pathfinding(tree_observation, 16)
             if j > 1000000:
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
-        if curriculum == "test":
+        if training_params.curriculum == "test":
             expansion = [500, 1500]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -259,30 +258,30 @@ def train_agent(train_params, policy, curriculum, render=False):
                 evaluation = True
             if j > 2000:
                 break
-        if curriculum == "custom":
-            expansion = [320000, 640000, 1000000]
+        if training_params.curriculum == "custom":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion) + 1)]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
-                (1000000, make_custom_training(tree_observation)),
-                (880000, create_deadlock(tree_observation, 4, 32, 50, 16)),
-                (800000, create_deadlock(tree_observation, 4, 32, 60, 8)),
-                (720000, create_deadlock(tree_observation, 2, 32, 80, 4)),
-                (640000, create_deadlock(tree_observation, 2, 32, 100, 2)),
-                (560000, create_malfunction(tree_observation, 8)),
-                (480000, create_malfunction(tree_observation, 7)),
-                (400000, create_malfunction(tree_observation, 6)),
-                (320000, create_malfunction(tree_observation, 5)),
-                (240000, create_pathfinding(tree_observation, 32)),
-                (160000, create_pathfinding(tree_observation, 16)),
-                (80000, create_pathfinding(tree_observation, 8)),
-                (0, create_pathfinding(tree_observation, 4))]
+                (train_params.envchange*12, make_custom_training(tree_observation)),
+                (train_params.envchange*11, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange*10, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange*9, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange*8, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange*7, create_malfunction(tree_observation, 8)),
+                (train_params.envchange*6, create_malfunction(tree_observation, 7)),
+                (train_params.envchange*5, create_malfunction(tree_observation, 6)),
+                (train_params.envchange*4, create_malfunction(tree_observation, 5)),
+                (train_params.envchange*3, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange*2, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange*1, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange*0, create_pathfinding(tree_observation, 4))]
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
                     train_env = env_func
-            if j > 1000000:
+            if j > train_params.envchange*12:
                 policy.reset_scores()
                 evaluation = True
 
@@ -369,8 +368,7 @@ def train_agent(train_params, policy, curriculum, render=False):
         t.get("networksteps").append(j)
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
-               #a.append(train_env.return_agent_pos())
-        if j >= 1010000:
+        if j >= (train_params.envchange*12) + 300000:
             print("networksteps over 1  300 000")
             break
 
@@ -393,7 +391,9 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="custom", type=str)
+    parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
+    parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="EWC", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
@@ -410,15 +410,14 @@ if __name__ == "__main__":
         "PAU": DQN_PAU_Policy
     }
 
-    policy = policy_mapping.get(training_params.policy)
-    if policy is None:
+    if policy_mapping.get(training_params.policy) is None:
         print("Error: Non-Existent Policy")
         sys.exit()
 
     start_time = time.time()
     for z in range(training_params.runs):
         print(z)
-        train_agent(training_params,policy, training_params.curriculum)
+        train_agent(training_params,policy_mapping.get(training_params.policy))
 
     print(time.time() - start_time)
     base_filename = f"{training_params.policy}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
