@@ -13,7 +13,7 @@ import copy
 import os
 from torch.autograd import Variable
 import pandas as pd
-
+import heapq
 import numpy
 
 from reinforcement_learning.model import DQN, Network
@@ -37,8 +37,8 @@ class Continual_DQN_Expansion():
     def act(self, handle, state, eps=0.):
         return self.networks[-1][self.act_rotation].act(handle, state, eps)
     def network_rotation(self, score):
-        self.networks[-1][self.act_rotation].score_try +=1
-        self.networks[-1][self.act_rotation].score = (self.networks[-1][self.act_rotation].score + score)/ self.networks[-1][self.act_rotation].score_try
+        self.networks[-1][self.act_rotation].score.pop(0)  # Remove the oldest element
+        self.networks[-1][self.act_rotation].score.append(score)
         self.act_rotation +=1
         self.act_rotation %= len(self.networks[-1])
     def step(self, handle, state, action, reward, next_state, done):
@@ -47,7 +47,18 @@ class Continual_DQN_Expansion():
             network.step(handle, state, action, reward, next_state, done)
     def expansion(self):
         self.act_rotation = 1
-        #called with new Task
+        last_networks = self.networks[-1]
+
+        # Compute the average score for each element in the last list and store it with the element
+        scored_networks = [(numpy.average(x.score), x) for x in last_networks]
+        print(scored_networks)
+        # Use nlargest to keep the top 2 elements with the highest average score
+        top_2_networks = heapq.nlargest(2, scored_networks, key=lambda item: item[0])
+        print(top_2_networks)
+        # Extract the elements (discard the average scores) and update self.networks[-1]
+        self.networks[-1] = [x for _, x in top_2_networks]
+        print(len(self.networks[-1]))
+
         networks_copy = self.networks[-1][:]
         if len(networks_copy) == 1:
             #adding the current network to the past stack
@@ -63,11 +74,8 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-            self.networkEP[-1][1] = self.networkEP[-1][1] + "+"
-            self.networkEP.append(["EE","EP","PE","PP","3P"])
             # add old networks to old stack
             self.networks.insert(len(self.networks) - 1, networks_copy[:])
-            # pau löschen
             # Adding PAU Network fertig,
             #[[],[E,P],[E,P]]
             self.networks[-1].insert(1, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
@@ -79,6 +87,8 @@ class Continual_DQN_Expansion():
             #[[],[E,P],[E,EP, P]]
             # Adding EWC fertig
             self.networks[-1][0].update_ewc()
+            self.networks[-1][0].freeze = True
+
             #[[],[E,P],[EE,EP, P]]
             self.networks[-1].insert(3, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][2].get_weigths()))
             self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
@@ -91,13 +101,9 @@ class Continual_DQN_Expansion():
             self.networks[-1][2].update_ewc()
             self.networks[-1][2].freeze = True
             #[[],[E,P],[EE,EP,PE,PP]]
-        self.reset_scores()
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode
-    def reset_scores(self):
-        for x in self.networks[-1]:
-            x.score = 0
-            x.score_try = 0
+
     def get_name(self):
         return "CDE" + str(self.act_rotation)
     def get_activation(self):
@@ -129,7 +135,7 @@ class subCDE_Policy:
         self.ewc_loss = 0
         self.ewc_lambda = 0.1
         self.retain_graph = False
-        self.score = 0
+        self.score = [0,0,0,0,0,0,0,0,0,0]
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
@@ -213,6 +219,8 @@ class subCDE_Policy:
     def get_ewc_loss(self, model, fisher, p_old):
         loss = 0
         for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
             _loss = fisher[n] * (p - p_old[n].to(self.device)) ** 2
             loss += _loss.sum()
         return loss
@@ -247,6 +255,8 @@ class subCDE_Policy:
             negloglikelihood = F.nll_loss(F.log_softmax(output, dim=1), target)
             negloglikelihood.backward(retain_graph=True)
         for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
             fisher[n].data += p.grad.data ** 2 / len(dataset.sample())
 
         fisher = {n: p for n, p in fisher.items()}

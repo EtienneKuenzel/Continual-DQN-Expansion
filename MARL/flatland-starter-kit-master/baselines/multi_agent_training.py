@@ -203,6 +203,7 @@ def write_to_csv(filename, data):
         writer.writerow(data.keys())
         writer.writerows(zip(*data.values()))
 
+
 def train_agent(train_params, policy, render=False):
     j = 0
     evaluation = False
@@ -238,7 +239,7 @@ def train_agent(train_params, policy, render=False):
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
         if training_params.curriculum == "test":
-            expansion = [500, 1500]
+            expansion = [500, 1000, 1500, 2000]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
                     print("Expansion")
@@ -253,13 +254,14 @@ def train_agent(train_params, policy, render=False):
             for threshold, env_func in curriculum_steps:
                 if j >= threshold:
                     train_env = env_func
-            if j > 1500:
-                policy.reset_scores()
+            if j > 2500:
                 evaluation = True
-            if j > 2000:
+            if j > 3000:
                 break
+
         if training_params.curriculum == "custom":
-            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion) + 1)]
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            print(expansion)
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
                     policy.expansion()
@@ -282,7 +284,6 @@ def train_agent(train_params, policy, render=False):
                 if j >= threshold and threshold:
                     train_env = env_func
             if j > train_params.envchange*12:
-                policy.reset_scores()
                 evaluation = True
 
 
@@ -391,7 +392,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="custom", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
@@ -399,8 +400,8 @@ if __name__ == "__main__":
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
 
-    d = {'networksteps': [], 'algo': [], 'score': []}
-    r = {'networksteps': [], 'algo': [], 'completions': []}
+    d = {'networksteps': [], 'algo': [], 'score': [], 'env': []}
+    r = {'networksteps': [], 'algo': [], 'completions': [], 'env': []}
     t = {'networksteps': [],'function': [], 'type': []}
     a=[]
     policy_mapping = {
