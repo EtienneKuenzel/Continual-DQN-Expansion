@@ -149,8 +149,9 @@ def create_deadlock(tree_observation, height, length, prob, agents):
           line_generator=sparse_line_generator(),
           number_of_agents=agents,
           obs_builder_object=tree_observation,
-            malfunction_generator=ParamMalfunctionGen(malfunction_parameters)
-          )
+          malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
+          name = "Deadlock"
+    )
 def make_custom_training(tree_observation):
     rail, rail_map, optionals = make_custom_rail()
     malfunction_parameters = MalfunctionParameters(
@@ -164,7 +165,8 @@ def make_custom_training(tree_observation):
           line_generator=sparse_line_generator(),
           number_of_agents=7,
           obs_builder_object=tree_observation,
-            malfunction_generator=ParamMalfunctionGen(malfunction_parameters)
+            malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
+          name = "Evaluation"
           )
 def create_pathfinding(tree_observation, size):
     rail, rail_map, optionals = make_pathfinding_track(size)
@@ -174,6 +176,7 @@ def create_pathfinding(tree_observation, size):
           line_generator=sparse_line_generator(),
           number_of_agents=1,
           obs_builder_object=tree_observation,
+          name="Pathfinding"
           )
 def create_malfunction(tree_observation, agent):
     rail, rail_map, optionals = make_malfunction_training(agent, 20)
@@ -189,6 +192,7 @@ def create_malfunction(tree_observation, agent):
           number_of_agents=agent,
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
           obs_builder_object=tree_observation,
+          name="Malfunction"
           )
 
 
@@ -358,12 +362,15 @@ def train_agent(train_params, policy, render=False):
         episodes.append(j)
 
         d.get("networksteps").append(j)
+        print(normalized_score)
         d.get("score").append(normalized_score)
         d.get("algo").append(policy.get_name())
+        d.get("env").append(train_env.name)
 
         r.get("networksteps").append(j)
         r.get("completions").append(completion)
         r.get("algo").append(policy.get_name())
+        r.get("env").append(train_env.name)
         policy.network_rotation(normalized_score)
 
         t.get("networksteps").append(j)
@@ -392,7 +399,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="custom", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)

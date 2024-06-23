@@ -51,13 +51,10 @@ class Continual_DQN_Expansion():
 
         # Compute the average score for each element in the last list and store it with the element
         scored_networks = [(numpy.average(x.score), x) for x in last_networks]
-        print(scored_networks)
         # Use nlargest to keep the top 2 elements with the highest average score
         top_2_networks = heapq.nlargest(2, scored_networks, key=lambda item: item[0])
-        print(top_2_networks)
         # Extract the elements (discard the average scores) and update self.networks[-1]
         self.networks[-1] = [x for _, x in top_2_networks]
-        print(len(self.networks[-1]))
 
         networks_copy = self.networks[-1][:]
         if len(networks_copy) == 1:

@@ -110,6 +110,7 @@ class RailEnv(Environment):
                  remove_agents_at_target=True,
                  random_seed=None,
                  record_steps=False,
+                 name=""
                  ):
         """
         Environment init.
@@ -206,6 +207,7 @@ class RailEnv(Environment):
         self.list_actions = []  # save actions in here
 
         self.motionCheck = ac.MotionCheck()
+        self.name = name
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
