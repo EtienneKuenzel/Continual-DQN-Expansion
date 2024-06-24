@@ -33,7 +33,7 @@ class Continual_DQN_Expansion():
         self.x = 0
         self.act_rotation = 0
         self.evaluation_mode = False
-        self.networkEP = [["N"],["E","P"]]
+        self.networkEP = []
     def act(self, handle, state, eps=0.):
         return self.networks[-1][self.act_rotation].act(handle, state, eps)
     def network_rotation(self, score):
@@ -48,15 +48,15 @@ class Continual_DQN_Expansion():
     def expansion(self):
         self.act_rotation = 1
         last_networks = self.networks[-1]
-
-        # Compute the average score for each element in the last list and store it with the element
-        scored_networks = [(numpy.average(x.score), x) for x in last_networks]
-        # Use nlargest to keep the top 2 elements with the highest average score
-        top_2_networks = heapq.nlargest(2, scored_networks, key=lambda item: item[0])
-        # Extract the elements (discard the average scores) and update self.networks[-1]
-        self.networks[-1] = [x for _, x in top_2_networks]
-
+        # Compute the average score for each element in the last list and store it with the element and its index.
+        scored_networks_with_indexes = [(numpy.average(x.score), i, x) for i, x in enumerate(last_networks)]
+        # Use nlargest to keep the top 2 elements with the highest average score, including their indexes.
+        top_2_networks_with_indexes = heapq.nlargest(2, scored_networks_with_indexes, key=lambda item: item[0])
+        # Extract the elements (discard the average scores) and indexes, then update self.networks[-1].
+        top_2_indexes = [i for _, i, _ in top_2_networks_with_indexes]
+        self.networks[-1] = [x for _, _, x in top_2_networks_with_indexes]
         networks_copy = self.networks[-1][:]
+        self.networkEP.append(top_2_indexes)
         if len(networks_copy) == 1:
             #adding the current network to the past stack
             #self.networks.insert(len(self.networks) - 1, networks_copy[:])
@@ -71,33 +71,27 @@ class Continual_DQN_Expansion():
             #Adding EWC fertig to newstack
             self.networks[-1][0].update_ewc()
         else:
-            # add old networks to old stack
             self.networks.insert(len(self.networks) - 1, networks_copy[:])
-            # Adding PAU Network fertig,
-            #[[],[E,P],[E,P]]
+
             self.networks[-1].insert(1, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
             self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
                                                 self.networks[-1][0].qnetwork_target,
                                                 self.networks[-1][0].optimizer, self.networks[-1][0].ewc_loss, self.networks[-1][0].memory,
                                                 self.networks[-1][0].loss, self.networks[-1][0].params,
                                                 self.networks[-1][0].p_old)
-            #[[],[E,P],[E,EP, P]]
-            # Adding EWC fertig
+
             self.networks[-1][0].update_ewc()
             self.networks[-1][0].freeze = True
 
-            #[[],[E,P],[EE,EP, P]]
             self.networks[-1].insert(3, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][2].get_weigths()))
             self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
                                                 self.networks[-1][2].qnetwork_target,
                                                 self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
                                                 self.networks[-1][2].loss, self.networks[-1][2].params,
                                                 self.networks[-1][2].p_old)
-            #[[],[E,P],[EE,EP, P, PP]]
-            # Adding EWC fertig
+
             self.networks[-1][2].update_ewc()
             self.networks[-1][2].freeze = True
-            #[[],[E,P],[EE,EP,PE,PP]]
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode
 
@@ -319,6 +313,7 @@ class DQN_Policy:
         self.ewc_lambda = 0.1
         self.retain_graph = False
         self.score = 0
+        self.networkEP = []
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
@@ -500,6 +495,8 @@ class DQN_EWC_Policy:
         self.ewc_lambda = 0.1
         self.retain_graph = False
         self.score = 0
+        self.networkEP = []
+
         self.score_try = 0
         self.counter = 0
         if initialweights == 0:
@@ -698,6 +695,8 @@ class DQN_PAU_Policy:
         self.ewc_lambda = 0.1
         self.retain_graph = False
         self.score = 0
+        self.networkEP = []
+
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)

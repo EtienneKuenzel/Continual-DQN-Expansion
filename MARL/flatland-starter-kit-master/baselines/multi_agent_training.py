@@ -265,7 +265,6 @@ def train_agent(train_params, policy, render=False):
 
         if training_params.curriculum == "custom":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
-            print(expansion)
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
                     policy.expansion()
@@ -362,7 +361,6 @@ def train_agent(train_params, policy, render=False):
         episodes.append(j)
 
         d.get("networksteps").append(j)
-        print(normalized_score)
         d.get("score").append(normalized_score)
         d.get("algo").append(policy.get_name())
         d.get("env").append(train_env.name)
@@ -376,6 +374,9 @@ def train_agent(train_params, policy, render=False):
         t.get("networksteps").append(j)
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
+
+        m['type'] = []
+        m.get('type').append(policy.networkEP)
         if j >= (train_params.envchange*12) + 300000:
             print("networksteps over 1  300 000")
             break
@@ -399,7 +400,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="custom", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
@@ -410,6 +411,7 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': [], 'env': []}
     r = {'networksteps': [], 'algo': [], 'completions': [], 'env': []}
     t = {'networksteps': [],'function': [], 'type': []}
+    m = {'type' : []}
     a=[]
     policy_mapping = {
         "DQN": DQN_Policy,
@@ -432,3 +434,4 @@ if __name__ == "__main__":
     write_to_csv(f"completions_{base_filename}.csv", r)
     write_to_csv(f"score_{base_filename}.csv", d)
     write_to_csv(f"weights_{base_filename}.csv", t)
+    write_to_csv(f"expansion.csv", m)
