@@ -4,7 +4,8 @@ from scipy.linalg import sqrtm
 from math import sqrt
 
 # Specify the path to your CSV file
-file_path = 'fisher_info.csv'
+file_path = '0_fisher_info.csv'
+file_path1 = '1_fisher_info.csv'
 
 # Open the CSV file
 with open(file_path, mode='r') as file:
@@ -15,45 +16,55 @@ with open(file_path, mode='r') as file:
     # Iterate through the rows
     for row in csv_reader:
         for x in row:
-            if b == 1000:
-                break
             b+=1
             a.append(float(x))
+with open(file_path1, mode='r') as file:
+    # Create a CSV reader object
+    csv_reader = csv.reader(file)
+    c = []
+    b=0
+    # Iterate through the rows
+    for row in csv_reader:
+        for x in row:
+            b+=1
+            c.append(float(x))
 
 def unit_normalize(arr):
-    total_sum = sum(arr)
-    normalized_arr = [x / total_sum for x in arr]
+    total_sum = np.sum(arr)
+    normalized_arr = arr / total_sum
     return normalized_arr
 
-
 def euclidean_distance(point1, point2):
-    # Calculate Euclidean distance between two points
-    return sqrt((point1 - point2)**2)
-
+    return np.sqrt((point1 - point2)**2)
 
 def compute_frechet_distance(A, B):
     n = len(A)
     m = len(B)
 
-    # Initialize a distance matrix
-    D = [[-1] * m for _ in range(n)]
+    # Initialize two rows for rolling window
+    prev_row = np.full(m, -1.0)
+    curr_row = np.full(m, -1.0)
 
-    # Compute Frechet distance using dynamic programming approach
+    # Compute Frechet distance using dynamic programming approach with rolling window
     for i in range(n):
         for j in range(m):
             if i == 0 and j == 0:
-                D[i][j] = euclidean_distance(A[0], B[0])
+                curr_row[j] = euclidean_distance(A[0], B[0])
             elif i > 0 and j == 0:
-                D[i][j] = max(D[i - 1][0], euclidean_distance(A[i], B[0]))
+                curr_row[j] = max(prev_row[0], euclidean_distance(A[i], B[0]))
             elif i == 0 and j > 0:
-                D[i][j] = max(D[0][j - 1], euclidean_distance(A[0], B[j]))
+                curr_row[j] = max(curr_row[j - 1], euclidean_distance(A[0], B[j]))
             elif i > 0 and j > 0:
-                D[i][j] = max(min(D[i - 1][j], D[i - 1][j - 1], D[i][j - 1]), euclidean_distance(A[i], B[j]))
+                curr_row[j] = max(min(prev_row[j], prev_row[j - 1], curr_row[j - 1]), euclidean_distance(A[i], B[j]))
 
-    return D[n - 1][m - 1]
+        # Move current row to previous row for next iteration
+        prev_row[:] = curr_row[:]
+
+    return curr_row[m - 1]
+
 
 # Example usage
 F1 = unit_normalize(a)
-F2 = unit_normalize(a)
+F2 = unit_normalize(c)
 print("Frechet distance between A and B:", compute_frechet_distance(F1, F2))
 
