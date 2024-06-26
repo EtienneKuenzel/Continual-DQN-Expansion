@@ -9,7 +9,7 @@ from flatland.utils.rendertools import RenderTool
 import csv
 
 import numpy as np
-
+import copy
 
 from flatland.envs.step_utils.states import TrainState
 from flatland1.envs.rail_env import RailEnv
@@ -194,8 +194,42 @@ def create_malfunction(tree_observation, agent):
           obs_builder_object=tree_observation,
           name="Malfunction"
           )
+def eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, networkstep):
+    eval_env_list = [create_pathfinding(tree_observation, 32),create_malfunction(tree_observation, 8), create_deadlock(tree_observation, 4, 32, 50, 16),make_custom_training(tree_observation)]
 
 
+
+    for env in eval_env_list:
+        obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
+        max_steps = env._max_episode_steps * 3
+        action_dict = dict()
+        agent_obs = [None] * env.get_num_agents()
+        score = 0
+        # Build initial agent-specific observations
+        for agent in env.get_agent_handles():
+            if obs[agent]:
+                agent_obs[agent] = normalize_observation(obs[agent], observation_tree_depth,observation_radius=observation_radius)
+        # Run episode
+        for step in range(max_steps):
+            for agent in env.get_agent_handles():
+                if info['action_required'][agent]:
+                    action = policy.act(agent, agent_obs[agent], eps=0)
+                else:
+                    action = 0
+                action_dict.update({agent: action})
+
+        next_obs, all_rewards, done, info = env.step(action_dict)
+        for agent in env.get_agent_handles():
+            score += all_rewards[agent]
+
+        completion = sum([agent.state == TrainState.DONE for agent in env.agents]) / max(1, env.get_num_agents())
+        normalized_score = score / (max_steps * env.get_num_agents())
+
+        q.get("networksteps").append(networkstep)
+        q.get("score").append(normalized_score)
+        q.get("completions").append(completion)
+        q.get("algo").append(policy.get_name())
+        q.get("env").append(env.name)
 def epsilon(x):
     if x == 0:
         return 1
@@ -258,6 +292,12 @@ def train_agent(train_params, policy, render=False):
             for threshold, env_func in curriculum_steps:
                 if j >= threshold:
                     train_env = env_func
+            print(train_env)
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    print(train_env.name)
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = copy.copy(train_env)
             if j > 2500:
                 evaluation = True
             if j > 3000:
@@ -286,6 +326,11 @@ def train_agent(train_params, policy, render=False):
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
                     train_env = env_func
+            if j !=0:
+                if train_env.name == train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
             if j > train_params.envchange*12:
                 evaluation = True
 
@@ -296,7 +341,6 @@ def train_agent(train_params, policy, render=False):
 
         # Init these values after reset()
         max_steps = train_env._max_episode_steps*3
-        action_count = [0] * action_size
         action_dict = dict()
         n_agents = train_env.get_num_agents()
         agent_obs = [None] * n_agents
@@ -318,12 +362,10 @@ def train_agent(train_params, policy, render=False):
         eps_start = epsilon(j)
         # Run episode
         for step in range(max_steps):
-
             for agent in train_env.get_agent_handles():
                 if info['action_required'][agent]:
                     update_values[agent] = True
                     action = policy.act(agent, agent_obs[agent], eps=eps_start)
-                    action_count[action] += 1
                     actions_taken.append(action)
                 else:
                     # An action is not required if the train hasn't joined the railway network,
@@ -400,10 +442,10 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="custom", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="EWC", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
@@ -411,6 +453,8 @@ if __name__ == "__main__":
     d = {'networksteps': [], 'algo': [], 'score': [], 'env': []}
     r = {'networksteps': [], 'algo': [], 'completions': [], 'env': []}
     t = {'networksteps': [],'function': [], 'type': []}
+    q = {'networksteps': [], 'algo': [], 'score': [], 'completions':[], 'env': []}
+
     m = {'type' : []}
     a=[]
     policy_mapping = {
@@ -435,3 +479,4 @@ if __name__ == "__main__":
     write_to_csv(f"score_{base_filename}.csv", d)
     write_to_csv(f"weights_{base_filename}.csv", t)
     write_to_csv(f"expansion.csv", m)
+    write_to_csv(f"eval.csv", q)
