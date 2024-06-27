@@ -150,7 +150,7 @@ def create_deadlock(tree_observation, height, length, prob, agents):
           number_of_agents=agents,
           obs_builder_object=tree_observation,
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
-          name = "Deadlock"
+          name = "Deadlock" + str(agents)
     )
 def make_custom_training(tree_observation):
     rail, rail_map, optionals = make_custom_rail()
@@ -176,7 +176,7 @@ def create_pathfinding(tree_observation, size):
           line_generator=sparse_line_generator(),
           number_of_agents=1,
           obs_builder_object=tree_observation,
-          name="Pathfinding"
+          name="Pathfinding" + str(size)
           )
 def create_malfunction(tree_observation, agent):
     rail, rail_map, optionals = make_malfunction_training(agent, 20)
@@ -192,44 +192,57 @@ def create_malfunction(tree_observation, agent):
           number_of_agents=agent,
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
           obs_builder_object=tree_observation,
-          name="Malfunction"
+          name="Malfunction" + str(agent)
           )
 def eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, networkstep):
     eval_env_list = [create_pathfinding(tree_observation, 32),create_malfunction(tree_observation, 8), create_deadlock(tree_observation, 4, 32, 50, 16),make_custom_training(tree_observation)]
 
 
-
     for env in eval_env_list:
-        obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
-        max_steps = env._max_episode_steps * 3
-        action_dict = dict()
-        agent_obs = [None] * env.get_num_agents()
-        score = 0
-        # Build initial agent-specific observations
-        for agent in env.get_agent_handles():
-            if obs[agent]:
-                agent_obs[agent] = normalize_observation(obs[agent], observation_tree_depth,observation_radius=observation_radius)
-        # Run episode
-        for step in range(max_steps):
+        for x in range(10):
+            obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
+
+            # Init these values after reset()
+            max_steps = env._max_episode_steps * 3
+            action_dict = dict()
+            n_agents = env.get_num_agents()
+            agent_obs = [None] * n_agents
+
+
+            score = 0
+            actions_taken = []
+
+            # Build initial agent-specific observations
             for agent in env.get_agent_handles():
-                if info['action_required'][agent]:
-                    action = policy.act(agent, agent_obs[agent], eps=0)
-                else:
-                    action = 0
-                action_dict.update({agent: action})
+                if obs[agent]:
+                    agent_obs[agent] = normalize_observation(obs[agent], observation_tree_depth,observation_radius=observation_radius)
+            # Run episode
+            for step in range(max_steps):
+                for agent in env.get_agent_handles():
+                    if info['action_required'][agent]:
+                        action = policy.act(agent, agent_obs[agent], eps=0)
+                        actions_taken.append(action)
+                    else:
+                        action = 0
+                    action_dict.update({agent: action})
+                # Update Observation
+                next_obs, all_rewards, done, info = env.step(action_dict)
+                for agent in env.get_agent_handles():
+                    # Preprocess the new observations
+                    if next_obs[agent]:
+                        agent_obs[agent] = normalize_observation(next_obs[agent], observation_tree_depth,observation_radius=observation_radius)
+                    score += all_rewards[agent]
+                if done['__all__']:
+                    break
+            tasks_finished = sum([agent.state == TrainState.DONE for agent in env.agents])
+            completion = tasks_finished / max(1, env.get_num_agents())
+            normalized_score = score / (max_steps * env.get_num_agents())
 
-        next_obs, all_rewards, done, info = env.step(action_dict)
-        for agent in env.get_agent_handles():
-            score += all_rewards[agent]
-
-        completion = sum([agent.state == TrainState.DONE for agent in env.agents]) / max(1, env.get_num_agents())
-        normalized_score = score / (max_steps * env.get_num_agents())
-
-        q.get("networksteps").append(networkstep)
-        q.get("score").append(normalized_score)
-        q.get("completions").append(completion)
-        q.get("algo").append(policy.get_name())
-        q.get("env").append(env.name)
+            q.get("networksteps").append(networkstep)
+            q.get("score").append(normalized_score)
+            q.get("completions").append(completion)
+            q.get("algo").append(policy.get_name())
+            q.get("env").append(env.name)
 def epsilon(x):
     if x == 0:
         return 1
@@ -261,10 +274,8 @@ def train_agent(train_params, policy, render=False):
     train_env = create_rail_env_5(tree_observation)
 
 
-    # Calculate the state size given the depth of the tree observation and the number of features
-    n_features_per_node = train_env.obs_builder.observation_dim
-    n_nodes = sum([np.power(4, i) for i in range(observation_tree_depth + 1)])
-    state_size = n_features_per_node * n_nodes
+    # Calculate the state size given the deph tof the tree observation and the number of features
+    state_size = train_env.obs_builder.observation_dim * sum([np.power(4, i) for i in range(observation_tree_depth + 1)])
     action_size = 5
 
     # policy
@@ -277,32 +288,30 @@ def train_agent(train_params, policy, render=False):
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
         if training_params.curriculum == "test":
-            expansion = [500, 1000, 1500, 2000]
+            expansion = [ 1000, 1500, 2000]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
                     print("Expansion")
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
-                (1500, make_custom_training(tree_observation)),
+                (0, create_pathfinding(tree_observation, 4)),
+                (500, create_deadlock(tree_observation, 2, 32, 100, 2)),
                 (1000, create_malfunction(tree_observation, 5)),
-                (500,  create_pathfinding(tree_observation, 4)),
-                (0,    create_deadlock(tree_observation, 2, 32, 100, 2))]
+                (1500, make_custom_training(tree_observation))
+            ]
 
             for threshold, env_func in curriculum_steps:
                 if j >= threshold:
                     train_env = env_func
-            print(train_env)
             if j !=0:
                 if train_env.name != train_env_prev.name:
-                    print(train_env.name)
                     eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
-            train_env_prev = copy.copy(train_env)
+            train_env_prev = train_env
             if j > 2500:
                 evaluation = True
             if j > 3000:
                 break
-
         if training_params.curriculum == "custom":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
@@ -310,24 +319,24 @@ def train_agent(train_params, policy, render=False):
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
-                (train_params.envchange*12, make_custom_training(tree_observation)),
-                (train_params.envchange*11, create_deadlock(tree_observation, 4, 32, 50, 16)),
-                (train_params.envchange*10, create_deadlock(tree_observation, 4, 32, 60, 8)),
-                (train_params.envchange*9, create_deadlock(tree_observation, 2, 32, 80, 4)),
-                (train_params.envchange*8, create_deadlock(tree_observation, 2, 32, 100, 2)),
-                (train_params.envchange*7, create_malfunction(tree_observation, 8)),
-                (train_params.envchange*6, create_malfunction(tree_observation, 7)),
-                (train_params.envchange*5, create_malfunction(tree_observation, 6)),
-                (train_params.envchange*4, create_malfunction(tree_observation, 5)),
-                (train_params.envchange*3, create_pathfinding(tree_observation, 32)),
-                (train_params.envchange*2, create_pathfinding(tree_observation, 16)),
-                (train_params.envchange*1, create_pathfinding(tree_observation, 8)),
-                (train_params.envchange*0, create_pathfinding(tree_observation, 4))]
+                (train_params.envchange * 0, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 1, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 2, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 3, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange * 4, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 5, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 6, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 7, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 8, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 9, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 10, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 11, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
                     train_env = env_func
             if j !=0:
-                if train_env.name == train_env_prev.name:
+                if train_env.name != train_env_prev.name:
                     eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
             train_env_prev = train_env
 
@@ -374,12 +383,14 @@ def train_agent(train_params, policy, render=False):
                     action = 0
                 action_dict.update({agent: action})
 
+
             # Render an episode at some interval
             if render:env_renderer.render_env(show=True,frames=False,show_observations=False,show_predictions=True)
 
 
             # Update replay buffer and train agent-------------------------------------------------------------
             next_obs, all_rewards, done, info = train_env.step(action_dict)
+
             for agent in train_env.get_agent_handles():
                 if update_values[agent] or done['__all__']:
                     # Only learn from timesteps where something happened
