@@ -124,7 +124,7 @@ class subCDE_Policy:
         self.buffer_min_size = parameters.buffer_min_size
         self.freeze = freeze
         self.ewc_loss = 0
-        self.ewc_lambda = 0.1
+        self.ewc_lambda = parameters.ewc_lambda
         self.retain_graph = False
         self.score = [0,0,0,0,0,0,0,0,0,0]
         self.score_try = 0
@@ -492,7 +492,7 @@ class DQN_EWC_Policy:
         self.buffer_min_size = parameters.buffer_min_size
         self.freeze = freeze
         self.ewc_loss = 0
-        self.ewc_lambda = 0.1
+        self.ewc_lambda = parameters.ewc_lambda
         self.retain_graph = False
         self.score = 0
         self.networkEP = []

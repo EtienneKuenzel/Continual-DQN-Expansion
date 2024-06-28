@@ -199,7 +199,7 @@ def eval_policy(tree_observation, policy, observation_tree_depth, observation_ra
 
 
     for env in eval_env_list:
-        for x in range(10):
+        for x in range(50):
             obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
 
             # Init these values after reset()
@@ -255,9 +255,10 @@ def write_to_csv(filename, data):
         writer.writerows(zip(*data.values()))
 
 
-def train_agent(train_params, policy, render=False):
+def train_agent(train_params, policy):
     j = 0
     evaluation = False
+    render = train_params.render
     episodes = []
     # Observation parameters
     observation_tree_depth = 3
@@ -295,10 +296,10 @@ def train_agent(train_params, policy, render=False):
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
-                (0, create_pathfinding(tree_observation, 4)),
+                (0, make_custom_training(tree_observation)),
                 (500, create_deadlock(tree_observation, 2, 32, 100, 2)),
                 (1000, create_malfunction(tree_observation, 5)),
-                (1500, make_custom_training(tree_observation))
+                (1500, create_pathfinding(tree_observation, 4))
             ]
 
             for threshold, env_func in curriculum_steps:
@@ -440,6 +441,8 @@ def train_agent(train_params, policy, render=False):
 if __name__ == "__main__":
     parser = ArgumentParser()
 
+    parser.add_argument("--render", help="render the environment", default=False, type=bool)
+
     parser.add_argument("--buffer_size", help="replay buffer size", default=int(1e6), type=int)
     parser.add_argument("--buffer_min_size", help="min buffer size to start training", default=0, type=int)
     parser.add_argument("--batch_size", help="minibatch size", default=128, type=int)
@@ -447,6 +450,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
 
+    parser.add_argument("--ewc_lambda", help="impact of the weight locking", default=0.1, type=float)
     parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)
     parser.add_argument("--layer_count", help="count of layers", default=2, type=int)
     parser.add_argument("--update_every", help="how often to update the network", default=8, type=int)
