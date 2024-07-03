@@ -7,7 +7,6 @@ from pathlib import Path
 from flatland.utils.rendertools import RenderTool
 
 import csv
-
 import numpy as np
 import copy
 
@@ -199,7 +198,7 @@ def eval_policy(tree_observation, policy, observation_tree_depth, observation_ra
 
 
     for env in eval_env_list:
-        for x in range(50):
+        for x in range(20):
             obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
 
             # Init these values after reset()
@@ -460,7 +459,7 @@ if __name__ == "__main__":
     parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="EWC", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
@@ -489,9 +488,21 @@ if __name__ == "__main__":
         train_agent(training_params,policy_mapping.get(training_params.policy))
 
     print(time.time() - start_time)
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Define the relative path to the new base directory for saving the CSV files
+    relative_base_dir = os.path.join(script_dir, '..', '..', '..', 'Evaluation', 'neweval')
+
+    # Ensure the directory exists
+    os.makedirs(relative_base_dir, exist_ok=True)
+
+    # Construct the base filename
     base_filename = f"{training_params.policy}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
-    write_to_csv(f"completions_{base_filename}.csv", r)
-    write_to_csv(f"score_{base_filename}.csv", d)
-    write_to_csv(f"weights_{base_filename}.csv", t)
-    write_to_csv(f"expansion.csv", m)
-    write_to_csv(f"eval.csv", q)
+
+    # Update the write_to_csv function calls to use the new relative directory
+    write_to_csv(os.path.join(relative_base_dir, f"completions_{base_filename}.csv"), r)
+    write_to_csv(os.path.join(relative_base_dir, f"score_{base_filename}.csv"), d)
+    write_to_csv(os.path.join(relative_base_dir, f"weights_{base_filename}.csv"), t)
+    write_to_csv(os.path.join(relative_base_dir, "expansion.csv"), m)
+    write_to_csv(os.path.join(relative_base_dir, "eval.csv"), q)
