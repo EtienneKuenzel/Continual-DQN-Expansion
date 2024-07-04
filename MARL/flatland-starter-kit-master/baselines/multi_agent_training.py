@@ -288,7 +288,8 @@ def train_agent(train_params, policy):
             if j > 1000000:
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
-        if training_params.curriculum == "customPMD":
+        elif training_params.curriculum == "customPMD":
+            print("1")
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -318,7 +319,9 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-        if training_params.curriculum == "customPDM":
+        elif training_params.curriculum == "customPDM":
+            print("2")
+
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -348,7 +351,7 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-        if training_params.curriculum == "customMDP":
+        elif training_params.curriculum == "customMDP":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -378,7 +381,7 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-        if training_params.curriculum == "customMPD":
+        elif training_params.curriculum == "customMPD":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -408,7 +411,7 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-        if training_params.curriculum == "customDPM":
+        elif training_params.curriculum == "customDPM":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -438,7 +441,7 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-        if training_params.curriculum == "customDMP":
+        elif training_params.curriculum == "customDMP":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -468,7 +471,9 @@ def train_agent(train_params, policy):
 
             if j > train_params.envchange*12:
                 evaluation = True
-
+        else:
+            print("Error: Non-Existent Curriculum")
+            break
 
         if render: env_renderer = RenderTool(train_env, gl="PGL")
         # Reset environment
@@ -581,7 +586,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="custom", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
@@ -629,5 +634,5 @@ if __name__ == "__main__":
     write_to_csv(os.path.join(relative_base_dir, f"completions_{base_filename}.csv"), r)
     write_to_csv(os.path.join(relative_base_dir, f"score_{base_filename}.csv"), d)
     write_to_csv(os.path.join(relative_base_dir, f"weights_{base_filename}.csv"), t)
-    write_to_csv(os.path.join(relative_base_dir, "expansion.csv"), m)
-    write_to_csv(os.path.join(relative_base_dir, "eval.csv"), q)
+    write_to_csv(os.path.join(relative_base_dir, f"expansion_{base_filename}.csv"), m)
+    write_to_csv(os.path.join(relative_base_dir, f"eval_{base_filename}.csv"), q)
