@@ -27,8 +27,9 @@ from observation_utils import normalize_observation
 
 import time
 import math
+curriculum_steps = [(0, 'A'), (1, 'B'), (2, 'C')]
 
-
+# Define the new positions
 def create_rail_env_1(tree_observation):
     # Break agents from time to time
     malfunction_parameters = MalfunctionParameters(
@@ -287,32 +288,7 @@ def train_agent(train_params, policy):
             if j > 1000000:
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
-        if training_params.curriculum == "test":
-            expansion = [ 1000, 1500, 2000]
-            for threshold in expansion:
-                if j >= threshold and threshold not in expansion_done:
-                    print("Expansion")
-                    policy.expansion()
-                    expansion_done.add(threshold)
-            curriculum_steps = [
-                (0, make_custom_training(tree_observation)),
-                (500, create_deadlock(tree_observation, 2, 32, 100, 2)),
-                (1000, create_malfunction(tree_observation, 5)),
-                (1500, create_pathfinding(tree_observation, 4))
-            ]
-
-            for threshold, env_func in curriculum_steps:
-                if j >= threshold:
-                    train_env = env_func
-            if j !=0:
-                if train_env.name != train_env_prev.name:
-                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
-            train_env_prev = train_env
-            if j > 2500:
-                evaluation = True
-            if j > 3000:
-                break
-        if training_params.curriculum == "custom":
+        if training_params.curriculum == "customPMD":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -331,6 +307,156 @@ def train_agent(train_params, policy):
                 (train_params.envchange * 9, create_deadlock(tree_observation, 2, 32, 80, 4)),
                 (train_params.envchange * 10, create_deadlock(tree_observation, 4, 32, 60, 8)),
                 (train_params.envchange * 11, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
+            if j > train_params.envchange*12:
+                evaluation = True
+        if training_params.curriculum == "customPDM":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
+                    policy.expansion()
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (train_params.envchange * 0, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 1, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 2, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 3, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange * 4, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 5, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 6, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 7, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 8, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 9, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 10, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 11, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
+            if j > train_params.envchange*12:
+                evaluation = True
+        if training_params.curriculum == "customMDP":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
+                    policy.expansion()
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (train_params.envchange * 0, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 1, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 2, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 3, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 4, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 5, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 6, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 7, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 8, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 9, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 10, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 11, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
+            if j > train_params.envchange*12:
+                evaluation = True
+        if training_params.curriculum == "customMPD":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
+                    policy.expansion()
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (train_params.envchange * 0, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 1, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 2, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 3, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 4, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 5, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 6, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 7, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange * 8, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 9, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 10, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 11, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
+            if j > train_params.envchange*12:
+                evaluation = True
+        if training_params.curriculum == "customDPM":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
+                    policy.expansion()
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (train_params.envchange * 0, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 1, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 2, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 3, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 4, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 5, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 6, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 7, create_pathfinding(tree_observation, 32)),
+                (train_params.envchange * 8, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 9, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 10, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 11, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 12, make_custom_training(tree_observation))]
+            for threshold, env_func in curriculum_steps:
+                if j >= threshold and threshold:
+                    train_env = env_func
+            if j !=0:
+                if train_env.name != train_env_prev.name:
+                    eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, j)
+            train_env_prev = train_env
+
+            if j > train_params.envchange*12:
+                evaluation = True
+        if training_params.curriculum == "customDMP":
+            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
+            for threshold in expansion:
+                if j >= threshold and threshold not in expansion_done:
+                    policy.expansion()
+                    expansion_done.add(threshold)
+            curriculum_steps = [
+                (train_params.envchange * 0, create_deadlock(tree_observation, 2, 32, 100, 2)),
+                (train_params.envchange * 1, create_deadlock(tree_observation, 2, 32, 80, 4)),
+                (train_params.envchange * 2, create_deadlock(tree_observation, 4, 32, 60, 8)),
+                (train_params.envchange * 3, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 4, create_malfunction(tree_observation, 5)),
+                (train_params.envchange * 5, create_malfunction(tree_observation, 6)),
+                (train_params.envchange * 6, create_malfunction(tree_observation, 7)),
+                (train_params.envchange * 7, create_malfunction(tree_observation, 8)),
+                (train_params.envchange * 8, create_pathfinding(tree_observation, 4)),
+                (train_params.envchange * 9, create_pathfinding(tree_observation, 8)),
+                (train_params.envchange * 10, create_pathfinding(tree_observation, 16)),
+                (train_params.envchange * 11, create_pathfinding(tree_observation, 32)),
                 (train_params.envchange * 12, make_custom_training(tree_observation))]
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
@@ -431,7 +557,6 @@ def train_agent(train_params, policy):
         m['type'] = []
         m.get('type').append(policy.networkEP)
         if j >= (train_params.envchange*12) + 300000:
-            print("networksteps over 1  300 000")
             break
 
 
@@ -456,7 +581,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum: test, custom", default="test", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
