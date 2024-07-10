@@ -1,41 +1,48 @@
-
-# Continual-DQN-Expansion #
-- Code for Continual-DQN-Expansion 
-- Code to evaluate Results
-## Simulator ##
-
-- Simulator used is Flatland-RL : https://github.com/flatland-association/flatland-rl
-
-## Usage ##
-### Requirements ###
-- You can create an environment using  ```conda env create -f environment.yml```
-
-
-### Training ###
-To test if Install is working correctly:
-```
-python multi_agent_training.py --curriculum="test" 
-```
-Run CDE on custom curriculum:
-```
-python multi_agent_training.py --curriculum="custom" --policy="CDE" --hidden_size=1024 --layer_count=2
-```
-
-### Evaluation ###
-Create Animation of PAU-Activation-Function 
-```
-python eval_weights.py --file="weights8x256.csv" --network="0" --layer=0
-```
-
-Create Plot of Trainingand Evaluation-Completions/Score
-```
-python eval_training.py --file="score2x1024.csv" --type="score"
-```
-```
-python eval_training.py --file="completions2x1024.csv" --type="completions"
-```
-## Results ##
+# Evaluation #
+## Sub-Environment Performance ##
+Score and Completions Evaluation of the Pathfinding, Malfunction, Deadlock and Evaluation Environment during the training.
+All Evaluations were made with a 2 Layers à 1024 Neurons
+Sub-Environments have their first letter as Abreviations D=Deadlock, M=Malfunction, P=Pathfinding.
+### EWC-0.5 ###
+#### Curriculum PMD ####
 <p float="left">
-  <img src="Evaluation\images\completions-comparison-layer size.png" width="49%" />
-  <img src="Evaluation\images\score-comparison-layer size.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customPMD_score.png" width="49%" />
 </p>
+
+#### Curriculum PDM ####
+<p float="left">
+  <img src="images\subenv\eval_EWC0.5-2x1024_customPDM_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customPDM_score.png" width="49%" />
+</p>
+
+#### Curriculum MPD ####
+<p float="left">
+  <img src="images\subenv\eval_EWC0.5-2x1024_customMPD_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customMPD_score.png" width="49%" />
+</p>
+
+#### Curriculum MDP ####
+<p float="left">
+  <img src="images\subenv\eval_EWC0.5-2x1024_customMDP_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customMDP_score.png" width="49%" />
+</p>
+
+#### Curriculum DMP ####
+<p float="left">
+  <img src="images\subenv\eval_EWC0.5-2x1024_customDMP_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customDMP_score.png" width="49%" />
+</p>
+
+#### Curriculum DPM ####
+<p float="left">
+  <img src="images\subenv\eval_EWC0.5-2x1024_customDPM_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC0.5-2x1024_customDPM_score.png" width="49%" />
+</p>
+
+### EWC (lambda=0.1) ###
+
+### PAU (m=5, n=4) ###
+
+### CDE (lambda=0.5) (m=5 n=4)###
+
