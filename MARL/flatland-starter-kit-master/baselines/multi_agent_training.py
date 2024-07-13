@@ -220,7 +220,7 @@ def eval_policy(tree_observation, policy, observation_tree_depth, observation_ra
             for step in range(max_steps):
                 for agent in env.get_agent_handles():
                     if info['action_required'][agent]:
-                        action = policy.act(agent, agent_obs[agent], eps=0)
+                        action = policy.act(agent, agent_obs[agent], eps=0, eval=True)
                         actions_taken.append(action)
                     else:
                         action = 0

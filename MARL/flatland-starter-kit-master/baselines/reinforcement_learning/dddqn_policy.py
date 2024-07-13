@@ -34,8 +34,17 @@ class Continual_DQN_Expansion():
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = []
-    def act(self, handle, state, eps=0.):
-        return self.networks[-1][self.act_rotation].act(handle, state, eps)
+    def act(self, handle, state, eps=0., eval = False):
+        if eval:
+            best_average = 0
+            for network in self.networks[-1]:
+                average = sum(network.score) / len(network.score)
+                if average > best_average:
+                    best_network = network
+                    best_average = average
+            return best_network.act(handle, state, eps)
+        else:
+            return self.networks[-1][self.act_rotation].act(handle, state, eps)
     def network_rotation(self, score):
         self.networks[-1][self.act_rotation].score.pop(0)  # Remove the oldest element
         self.networks[-1][self.act_rotation].score.append(score)
