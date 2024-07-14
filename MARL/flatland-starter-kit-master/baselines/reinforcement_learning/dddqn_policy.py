@@ -36,7 +36,8 @@ class Continual_DQN_Expansion():
         self.networkEP = []
     def act(self, handle, state, eps=0., eval = False):
         if eval:
-            best_average = 0
+            best_average = -1
+            best_network = self.networks[-1][0]
             for network in self.networks[-1]:
                 average = sum(network.score) / len(network.score)
                 if average > best_average:

@@ -289,7 +289,6 @@ def train_agent(train_params, policy):
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
         elif training_params.curriculum == "customPMD":
-            print("1")
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
@@ -320,11 +319,10 @@ def train_agent(train_params, policy):
             if j > train_params.envchange*12:
                 evaluation = True
         elif training_params.curriculum == "customPDM":
-            print("2")
-
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
             for threshold in expansion:
                 if j >= threshold and threshold not in expansion_done:
+                    print(expansion)
                     policy.expansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
@@ -586,9 +584,9 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="custom", type=str)
-    parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
-    parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
+    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
+    parser.add_argument("--envchange", help="time after environment change", default=800, type=int)
+    parser.add_argument("--expansion", help="time after expansion", default=3200, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
@@ -614,7 +612,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     for z in range(training_params.runs):
-        print(z)
+        print("Training Run: " + str(z))
         train_agent(training_params,policy_mapping.get(training_params.policy))
 
     print(time.time() - start_time)
