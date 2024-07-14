@@ -4,6 +4,12 @@ Score and Completions Evaluation of the Pathfinding, Malfunction, Deadlock and E
 All Evaluations were made with a 2 Layers à 1024 Neurons
 Sub-Environments have their first letter as Abreviations D=Deadlock, M=Malfunction, P=Pathfinding.
 
+### DQN ###
+#### Curriculum PMD ####
+<p float="left">
+  <img src="images\subenv\eval_DQN-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_DQN-2x1024_customPMD_score.png" width="49%" />
+</p> 
 
 ### PAU (m=5, n=4) ###
 #### Curriculum PMD ####
@@ -26,6 +32,13 @@ Evaluation for CDE just for one Sub-Network so just partially represantive
 <p float="left">
   <img src="images\subenv\eval_EWC0.1-2x1024_customPMD_completions.png" width="49%" />
   <img src="images\subenv\eval_EWC0.1-2x1024_customPMD_score.png" width="49%" />
+</p>
+
+### EWC (lambda=1) ###
+#### Curriculum PMD ####
+<p float="left">
+  <img src="images\subenv\eval_EWC1-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC1-2x1024_customPMD_score.png" width="49%" />
 </p>
 
 ### EWC (lambda=0.5) ###
