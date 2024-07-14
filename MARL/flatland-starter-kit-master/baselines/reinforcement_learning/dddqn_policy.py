@@ -176,7 +176,7 @@ class subCDE_Policy:
     def expansion(self):
         pass
         #self.update_ewc()
-    def act(self, handle, state, eps=0.):
+    def act(self, handle, state, eps=0., eval = False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
         with torch.no_grad():
@@ -363,7 +363,7 @@ class DQN_Policy:
     def expansion(self):
         pass
         #self.update_ewc()
-    def act(self, handle, state, eps=0.):
+    def act(self, handle, state, eps=0., eval = False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
         with torch.no_grad():
@@ -547,7 +547,7 @@ class DQN_EWC_Policy:
     def expansion(self):
         self.update_ewc()
         self.fisher_info()
-    def act(self, handle, state, eps=0.):
+    def act(self, handle, state, eps=0., eval = False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
         with torch.no_grad():
@@ -745,7 +745,7 @@ class DQN_PAU_Policy:
         self.p_old = copy.deepcopy(oldp)
     def expansion(self):
         pass
-    def act(self, handle, state, eps=0.):
+    def act(self, handle, state, eps=0., eval = False):
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
         with torch.no_grad():
