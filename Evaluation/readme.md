@@ -1,4 +1,16 @@
 # Evaluation #
+
+## Evaluation Done ##
+
+|     | DQN | PAU | | EWC0.1| 0.5| 1 | -0.5| |CDE0.1 | 0.5| 1 | -0.5| 
+|-----|-----|-----|-|-------|----|---|-----|-|-------|----|---|-----|
+| PMD | x   | x   | | x     | x  | x |     | |       |    |   |     |
+| PDM |     |     | |       | x  |   |     | |       |    |   |     |
+| DPM |     |     | |       | x  |   |     | |       |    |   |     |
+| DMP |     |     | |       | x  |   |     | |       |    |   |     |
+| MPD |     |     | |       | x  |   |     | |       |    |   |     |
+| MDP |     |     | |       | x  |   |     | |       |    |   |     |
+
 ## Sub-Environment Performance ##
 Score and Completions Evaluation of the Pathfinding, Malfunction, Deadlock and Evaluation Environment during the training.
 All Evaluations were made with a 2 Layers à 1024 Neurons
