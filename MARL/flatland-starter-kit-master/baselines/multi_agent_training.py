@@ -551,15 +551,19 @@ def train_agent(train_params, policy):
         r.get("completions").append(completion)
         r.get("algo").append(policy.get_name())
         r.get("env").append(train_env.name)
-        policy.network_rotation(normalized_score)
+        policy.network_rotation(normalized_score, completion)
 
         t.get("networksteps").append(j)
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
 
         m['type'] = []
+        m['score'] = []
+        m['completions'] = []
         m.get('type').append(policy.networkEP)
-        if j >= (train_params.envchange*12) + 300000:
+        m.get('score').append(policy.networkEP_scores)
+        m.get('completions').append(policy.networkEP_completions)
+        if j >= (train_params.envchange*12) + 30000:
             break
 
 
@@ -597,7 +601,8 @@ if __name__ == "__main__":
     t = {'networksteps': [],'function': [], 'type': []}
     q = {'networksteps': [], 'algo': [], 'score': [], 'completions':[], 'env': []}
 
-    m = {'type' : []}
+    m = {'type' : [],'score' : [],'completions' : []}
+    p = {'type': [], 'score': [], 'completions': []}
     a=[]
     policy_mapping = {
         "DQN": DQN_Policy,
@@ -614,6 +619,8 @@ if __name__ == "__main__":
     for z in range(training_params.runs):
         print("Training Run: " + str(z))
         train_agent(training_params,policy_mapping.get(training_params.policy))
+        for key in m:
+            p[key].extend(m[key])
 
     print(time.time() - start_time)
     # Get the directory of the current script
@@ -632,5 +639,5 @@ if __name__ == "__main__":
     write_to_csv(os.path.join(relative_base_dir, f"completions_{base_filename}.csv"), r)
     write_to_csv(os.path.join(relative_base_dir, f"score_{base_filename}.csv"), d)
     write_to_csv(os.path.join(relative_base_dir, f"weights_{base_filename}.csv"), t)
-    write_to_csv(os.path.join(relative_base_dir, f"expansion_{base_filename}.csv"), m)
+    write_to_csv(os.path.join(relative_base_dir, f"expansion_{base_filename}.csv"), p)
     write_to_csv(os.path.join(relative_base_dir, f"eval_{base_filename}.csv"), q)

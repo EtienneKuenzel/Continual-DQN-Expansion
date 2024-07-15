@@ -34,6 +34,8 @@ class Continual_DQN_Expansion():
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = []
+        self.networkEP_scores = []
+        self.networkEP_completions = []
     def act(self, handle, state, eps=0., eval = False):
         if eval:
             best_average = -1
@@ -46,9 +48,11 @@ class Continual_DQN_Expansion():
             return best_network.act(handle, state, eps)
         else:
             return self.networks[-1][self.act_rotation].act(handle, state, eps)
-    def network_rotation(self, score):
+    def network_rotation(self, score, completions):
         self.networks[-1][self.act_rotation].score.pop(0)  # Remove the oldest element
         self.networks[-1][self.act_rotation].score.append(score)
+        self.networks[-1][self.act_rotation].completions.pop(0)  # Remove the oldest element
+        self.networks[-1][self.act_rotation].completions.append(completions)
         self.act_rotation +=1
         self.act_rotation %= len(self.networks[-1])
     def step(self, handle, state, action, reward, next_state, done):
@@ -67,6 +71,13 @@ class Continual_DQN_Expansion():
         self.networks[-1] = [x for _, _, x in top_2_networks_with_indexes]
         networks_copy = self.networks[-1][:]
         self.networkEP.append(top_2_indexes)
+        s = []
+        c = []
+        for x in top_2_indexes:
+            s.append(sum(last_networks[x].score) / len(last_networks[x].score))
+            c.append(sum(last_networks[x].completions) / len(last_networks[x].completions))
+        self.networkEP_scores.append(s)
+        self.networkEP_completions.append(c)
         if len(networks_copy) == 1:
             #adding the current network to the past stack
             #self.networks.insert(len(self.networks) - 1, networks_copy[:])
@@ -136,7 +147,8 @@ class subCDE_Policy:
         self.ewc_loss = 0
         self.ewc_lambda = parameters.ewc_lambda
         self.retain_graph = False
-        self.score = [0,0,0,0,0,0,0,0,0,0]
+        self.score = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
+        self.completions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
@@ -506,7 +518,8 @@ class DQN_EWC_Policy:
         self.retain_graph = False
         self.score = 0
         self.networkEP = []
-
+        self.networkEP_scores = []
+        self.networkEP_completions = []
         self.score_try = 0
         self.counter = 0
         if initialweights == 0:
@@ -706,7 +719,8 @@ class DQN_PAU_Policy:
         self.retain_graph = False
         self.score = 0
         self.networkEP = []
-
+        self.networkEP_scores = []
+        self.networkEP_completions = []
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
