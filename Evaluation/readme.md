@@ -4,8 +4,8 @@
 
 |     | DQN | PAU | | EWC0.1| 0.5| 1 | -0.5| |CDE0.1 | 0.5| 1 | -0.5| 
 |-----|-----|-----|-|-------|----|---|-----|-|-------|----|---|-----|
-| PMD | x   | x   | | x     | x  | x |     | |       |    |   |     |
-| PDM |     |     | |       | x  |   |     | |       |    |   |     |
+| PMD | x   | x   | | x     | x  | x |  x  | |       |  x |   |     |
+| PDM | x   |     | |       | x  |   |     | |       |    |   |     |
 | DPM |     |     | |       | x  |   |     | |       |    |   |     |
 | DMP |     |     | |       | x  |   |     | |       |    |   |     |
 | MPD |     |     | |       | x  |   |     | |       |    |   |     |
@@ -23,6 +23,13 @@ Sub-Environments have their first letter as Abreviations D=Deadlock, M=Malfuncti
   <img src="images\subenv\eval_DQN-2x1024_customPMD_score.png" width="49%" />
 </p> 
 
+#### Curriculum PDM ####
+<p float="left">
+  <img src="images\subenv\eval_DQN-2x1024_customPDM_completions.png" width="49%" />
+  <img src="images\subenv\eval_DQN-2x1024_customPDM_score.png" width="49%" />
+</p> 
+
+
 ### PAU (m=5, n=4) ###
 #### Curriculum PMD ####
 <p float="left">
@@ -35,8 +42,15 @@ Sub-Environments have their first letter as Abreviations D=Deadlock, M=Malfuncti
 Evaluation for CDE just for one Sub-Network so just partially represantive
 #### Curriculum PMD ####
 <p float="left">
-  <img src="images\subenv\eval_CDE-2x1024_customPMD_completions.png" width="49%" />
-  <img src="images\subenv\eval_CDE-2x1024_customPMD_score.png" width="49%" />
+  <img src="images\subenv\eval_CDE0.5-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_CDE0.5-2x1024_customPMD_score.png" width="49%" />
+</p>
+
+### EWC (lambda=-0.5) ###
+#### Curriculum PMD ####
+<p float="left">
+  <img src="images\subenv\eval_EWC-0.5-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC-0.5-2x1024_customPMD_score.png" width="49%" />
 </p>
 
 ### EWC (lambda=0.1) ###
@@ -44,13 +58,6 @@ Evaluation for CDE just for one Sub-Network so just partially represantive
 <p float="left">
   <img src="images\subenv\eval_EWC0.1-2x1024_customPMD_completions.png" width="49%" />
   <img src="images\subenv\eval_EWC0.1-2x1024_customPMD_score.png" width="49%" />
-</p>
-
-### EWC (lambda=1) ###
-#### Curriculum PMD ####
-<p float="left">
-  <img src="images\subenv\eval_EWC1-2x1024_customPMD_completions.png" width="49%" />
-  <img src="images\subenv\eval_EWC1-2x1024_customPMD_score.png" width="49%" />
 </p>
 
 ### EWC (lambda=0.5) ###
@@ -92,3 +99,9 @@ Evaluation for CDE just for one Sub-Network so just partially represantive
 
 
 
+### EWC (lambda=1) ###
+#### Curriculum PMD ####
+<p float="left">
+  <img src="images\subenv\eval_EWC1-2x1024_customPMD_completions.png" width="49%" />
+  <img src="images\subenv\eval_EWC1-2x1024_customPMD_score.png" width="49%" />
+</p>
