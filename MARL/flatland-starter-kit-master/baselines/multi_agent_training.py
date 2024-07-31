@@ -278,14 +278,26 @@ def train_agent(train_params, policy):
     # Calculate the state size given the deph tof the tree observation and the number of features
     state_size = train_env.obs_builder.observation_dim * sum([np.power(4, i) for i in range(observation_tree_depth + 1)])
     action_size = 5
-
     # policy
     policy = policy(state_size, action_size, train_params)
     expansion_done = set()
     while True:
         if training_params.curriculum == "no":
             train_env = create_pathfinding(tree_observation, 16)
-            if j > 1000000:
+            if j > 960000:
+                train_env = make_custom_training(tree_observation)
+                evaluation = True
+        elif training_params.curriculum == "simple":
+            train_env = create_rail_env_1(tree_observation)
+            if j > 192000:
+                train_env = create_rail_env_2(tree_observation)
+            if j > 384000:
+                train_env = create_rail_env_3(tree_observation)
+            if j > 576000:
+                train_env = create_rail_env_4(tree_observation)
+            if j > 768000:
+                train_env = create_rail_env_5(tree_observation)
+            if j > 960000:
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
         elif training_params.curriculum == "customPMD":
@@ -468,6 +480,39 @@ def train_agent(train_params, policy):
             train_env_prev = train_env
 
             if j > train_params.envchange*12:
+                evaluation = True
+        elif training_params.curriculum == "customPMD+r":
+            train_env = create_pathfinding(tree_observation, 4)
+            if j > 65000:
+                train_env = create_pathfinding(tree_observation, 8)
+            if j > 130000:
+                train_env = create_pathfinding(tree_observation, 16)
+            if j > 195000:
+                train_env = create_pathfinding(tree_observation, 32)
+            if j > 260000:
+                train_env = create_malfunction(tree_observation, 5)
+            if j > 325000:
+                train_env = create_malfunction(tree_observation, 6)
+            if j > 390000:
+                train_env = create_malfunction(tree_observation, 7)
+            if j > 455000:
+                train_env = create_malfunction(tree_observation, 8)
+            if j > 520000:
+                train_env = create_pathfinding(tree_observation, 32)
+            if j > 585000:
+                train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
+            if j > 650000:
+                train_env = create_deadlock(tree_observation, 2, 32, 80, 4)
+            if j > 715000:
+                train_env = create_deadlock(tree_observation, 4, 32, 60, 8)
+            if j > 780000:
+                train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
+            if j > 845000:
+                train_env = create_pathfinding(tree_observation, 32)
+            if j > 910000:
+                train_env = create_malfunction(tree_observation, 8)
+            if j > 960000:
+                train_env = make_custom_training(tree_observation)
                 evaluation = True
         else:
             print("Error: Non-Existent Curriculum")

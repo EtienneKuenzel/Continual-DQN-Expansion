@@ -129,7 +129,6 @@ class Continual_DQN_Expansion():
         return self.act_rotation
     def get_fisher(self):
         return self.get_fisher_diag(self.qnetwork_local, self.memory, self.params)
-
 class subCDE_Policy:
     def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
         self.evaluation_mode = evaluation_mode
@@ -199,7 +198,7 @@ class subCDE_Policy:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
-    def network_rotation(self, score):
+    def network_rotation(self, score, completions):
         pass
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
@@ -336,6 +335,8 @@ class DQN_Policy:
         self.retain_graph = False
         self.score = 0
         self.networkEP = []
+        self.networkEP_scores = []
+        self.networkEP_completions = []
         self.score_try = 0
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
@@ -386,7 +387,7 @@ class DQN_Policy:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
-    def network_rotation(self, score):
+    def network_rotation(self, score, completions):
         pass
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
@@ -571,7 +572,7 @@ class DQN_EWC_Policy:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
-    def network_rotation(self, score):
+    def network_rotation(self, score, completions):
         pass
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
@@ -770,7 +771,7 @@ class DQN_PAU_Policy:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
-    def network_rotation(self, score):
+    def network_rotation(self, score, completions):
         pass
     def step(self, handle, state, action, reward, next_state, done):
         assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
