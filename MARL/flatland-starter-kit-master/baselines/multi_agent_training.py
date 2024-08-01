@@ -15,7 +15,7 @@ from flatland1.envs.rail_env import RailEnv
 from flatland.envs.line_generators import sparse_line_generator
 from flatland.envs.observations import TreeObsForRailEnv
 from flatland.envs.rail_generators import sparse_rail_generator, rail_from_grid_transition_map
-from flatland1.utils.simple_rail import make_custom_rail,make_deadlock_training, make_pathfinding_track, make_simple_rail_with_alternatives, make_malfunction_training
+from flatland1.utils.simple_rail import make_custom_rail,make_deadlock_training, make_pathfinding_track, make_malfunction_training
 
 from flatland.envs.malfunction_generators import ParamMalfunctionGen, MalfunctionParameters
 from flatland.envs.predictions import ShortestPathPredictorForRailEnv
@@ -23,6 +23,7 @@ base_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(base_dir))
 
 from reinforcement_learning.dddqn_policy import Continual_DQN_Expansion, DQN_Policy, DQN_EWC_Policy, DQN_PAU_Policy
+from reinforcement_learning.ppo_a2c_policy import PPOPolicy, A2CPolicy
 from observation_utils import normalize_observation
 
 import time
@@ -636,7 +637,7 @@ if __name__ == "__main__":
     parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU", default="CDE", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="PPO", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
@@ -653,7 +654,9 @@ if __name__ == "__main__":
         "DQN": DQN_Policy,
         "CDE": Continual_DQN_Expansion,
         "EWC": DQN_EWC_Policy,
-        "PAU": DQN_PAU_Policy
+        "PAU": DQN_PAU_Policy,
+        "PPO": PPOPolicy,
+        "A2C": A2CPolicy
     }
 
     if policy_mapping.get(training_params.policy) is None:
