@@ -59,6 +59,12 @@ def create_rail_env_2(tree_observation):
         min_duration=20,
         max_duration=20
     )
+    speed_ratio_map = {
+        0.8: 0.5,
+        0.6: 0.00,
+        0.4: 00.0,
+        0.2: 0.5
+    }
     return RailEnv(
         width=28, height=28,
         rail_generator=sparse_rail_generator(
@@ -67,7 +73,7 @@ def create_rail_env_2(tree_observation):
             max_rails_between_cities=2,
             max_rail_pairs_in_city=3
         ),
-        line_generator=sparse_line_generator(),
+        line_generator=sparse_line_generator(speed_ratio_map),
         number_of_agents=3,
         malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
         obs_builder_object=tree_observation,
@@ -80,6 +86,12 @@ def create_rail_env_3(tree_observation):
         min_duration=20,
         max_duration=20
     )
+    speed_ratio_map = {
+        0.8: 0.50,
+        0.6: 0.00,
+        0.4: 0.25,
+        0.2: 0.25
+    }
     return RailEnv(
         width=40, height=40,
         rail_generator=sparse_rail_generator(
@@ -88,7 +100,7 @@ def create_rail_env_3(tree_observation):
             max_rails_between_cities=3,
             max_rail_pairs_in_city=4
         ),
-        line_generator=sparse_line_generator(),
+        line_generator=sparse_line_generator(speed_ratio_map),
         number_of_agents=6,
         malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
         obs_builder_object=tree_observation,
@@ -101,6 +113,12 @@ def create_rail_env_4(tree_observation):
         min_duration=30,
         max_duration=30
     )
+    speed_ratio_map = {
+        0.8: 0.25,
+        0.6: 0.25,
+        0.4: 0.25,
+        0.2: 0.25
+    }
     return RailEnv(
         width=52, height=52,
         rail_generator=sparse_rail_generator(
@@ -109,7 +127,7 @@ def create_rail_env_4(tree_observation):
             max_rails_between_cities=3,
             max_rail_pairs_in_city=4
         ),
-        line_generator=sparse_line_generator(),
+        line_generator=sparse_line_generator(speed_ratio_map),
         number_of_agents=10,
         malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
         obs_builder_object=tree_observation,
@@ -122,6 +140,12 @@ def create_rail_env_5(tree_observation):
         min_duration=10,
         max_duration=30
     )
+    speed_ratio_map = {
+        0.8: 0.25,
+        0.6: 0.25,
+        0.4: 0.25,
+        0.2: 0.25
+    }
     return RailEnv(
         width=64, height=64,
         rail_generator=sparse_rail_generator(
@@ -130,24 +154,30 @@ def create_rail_env_5(tree_observation):
             max_rails_between_cities=3,
             max_rail_pairs_in_city=4
         ),
-        line_generator=sparse_line_generator(),
+        line_generator=sparse_line_generator(speed_ratio_map),
         number_of_agents=14,
         malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
         obs_builder_object=tree_observation,
         random_seed=0
     )
 
-def create_deadlock(tree_observation, height, length, prob, agents):
+def create_deadlock(tree_observation, height, length, prob, agents,x=1.0,y=0.0,c=0.0,v=0.0):
     rail, rail_map, optionals = make_deadlock_training(length, height, prob)
     malfunction_parameters = MalfunctionParameters(
         malfunction_rate=1/64,
         min_duration=1,
         max_duration=10
     )
+    speed_ratio_map = {
+        0.8: x,
+        0.6: y,
+        0.4: c,
+        0.2: v
+    }
     return RailEnv(width=rail_map.shape[1],
           height=rail_map.shape[0],
           rail_generator= rail_from_grid_transition_map(rail, optionals),
-          line_generator=sparse_line_generator(),
+          line_generator=sparse_line_generator(speed_ratio_map),
           number_of_agents=agents,
           obs_builder_object=tree_observation,
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
@@ -179,17 +209,23 @@ def create_pathfinding(tree_observation, size):
           obs_builder_object=tree_observation,
           name="Pathfinding" + str(size)
           )
-def create_malfunction(tree_observation, agent):
+def create_malfunction(tree_observation, agent,x=1.0,y=0.0,c=0.0,v=0.0):
     rail, rail_map, optionals = make_malfunction_training(agent, 20)
     malfunction_parameters = MalfunctionParameters(
         malfunction_rate=1/100,
         min_duration=100,
         max_duration=100
     )
+    speed_ratio_map = {
+        0.8: x,
+        0.6: y,
+        0.4: c,
+        0.2: v
+    }
     return RailEnv(width=rail_map.shape[1],
           height=rail_map.shape[0],
           rail_generator= rail_from_grid_transition_map(rail, optionals),
-          line_generator=sparse_line_generator(),
+          line_generator=sparse_line_generator(speed_ratio_map),
           number_of_agents=agent,
           malfunction_generator=ParamMalfunctionGen(malfunction_parameters),
           obs_builder_object=tree_observation,
@@ -312,14 +348,14 @@ def train_agent(train_params, policy):
                 (train_params.envchange * 1, create_pathfinding(tree_observation, 8)),
                 (train_params.envchange * 2, create_pathfinding(tree_observation, 16)),
                 (train_params.envchange * 3, create_pathfinding(tree_observation, 32)),
-                (train_params.envchange * 4, create_malfunction(tree_observation, 5)),
-                (train_params.envchange * 5, create_malfunction(tree_observation, 6)),
-                (train_params.envchange * 6, create_malfunction(tree_observation, 7)),
-                (train_params.envchange * 7, create_malfunction(tree_observation, 8)),
-                (train_params.envchange * 8, create_deadlock(tree_observation, 2, 32, 100, 2)),
-                (train_params.envchange * 9, create_deadlock(tree_observation, 2, 32, 80, 4)),
-                (train_params.envchange * 10, create_deadlock(tree_observation, 4, 32, 60, 8)),
-                (train_params.envchange * 11, create_deadlock(tree_observation, 4, 32, 50, 16)),
+                (train_params.envchange * 4, create_malfunction(tree_observation, 5,0.0,0.0,0.0,1.0)),
+                (train_params.envchange * 5, create_malfunction(tree_observation, 6,0.5,0.0,0.0,0.5)),
+                (train_params.envchange * 6, create_malfunction(tree_observation, 7,0.5,0.0,0.25,0.25)),
+                (train_params.envchange * 7, create_malfunction(tree_observation, 8,0.25,0.25,0.25,0.25)),
+                (train_params.envchange * 8, create_deadlock(tree_observation, 2, 32, 100, 2,0.,0.,0.,1.0)),
+                (train_params.envchange * 9, create_deadlock(tree_observation, 2, 32, 80, 4,0.5,0.,0.,0.5)),
+                (train_params.envchange * 10, create_deadlock(tree_observation, 4, 32, 60, 8,0.5,0.,0.25,0.25)),
+                (train_params.envchange * 11, create_deadlock(tree_observation, 4, 32, 50, 16,0.25,0.25,0.25,0.25)),
                 (train_params.envchange * 12, make_custom_training(tree_observation))]
             for threshold, env_func in curriculum_steps:
                 if j >= threshold and threshold:
@@ -491,27 +527,27 @@ def train_agent(train_params, policy):
             if j > 195000:
                 train_env = create_pathfinding(tree_observation, 32)
             if j > 260000:
-                train_env = create_malfunction(tree_observation, 5)
+                train_env = create_malfunction(tree_observation, 5, 0.,0.,0.,1.)
             if j > 325000:
-                train_env = create_malfunction(tree_observation, 6)
+                train_env = create_malfunction(tree_observation, 6, 0.5,0.,0.,0.5 )
             if j > 390000:
-                train_env = create_malfunction(tree_observation, 7)
+                train_env = create_malfunction(tree_observation, 7, 0.5,0.,0.25,0.25)
             if j > 455000:
-                train_env = create_malfunction(tree_observation, 8)
+                train_env = create_malfunction(tree_observation, 8, 0.25,0.25,0.25,0.25)
             if j > 520000:
                 train_env = create_pathfinding(tree_observation, 32)
             if j > 585000:
-                train_env = create_deadlock(tree_observation, 2, 32, 100, 2)
+                train_env = create_deadlock(tree_observation, 2, 32, 100, 2, 0.,0.,0.,1.0)
             if j > 650000:
-                train_env = create_deadlock(tree_observation, 2, 32, 80, 4)
+                train_env = create_deadlock(tree_observation, 2, 32, 80, 4, 0.5,0.,0.,0.5)
             if j > 715000:
-                train_env = create_deadlock(tree_observation, 4, 32, 60, 8)
+                train_env = create_deadlock(tree_observation, 4, 32, 60, 8, 0.5,0.,0.25,0.25)
             if j > 780000:
-                train_env = create_deadlock(tree_observation, 4, 32, 50, 16)
+                train_env = create_deadlock(tree_observation, 4, 32, 50, 16, 0.25,0.25,0.25,0.25)
             if j > 845000:
                 train_env = create_pathfinding(tree_observation, 32)
             if j > 910000:
-                train_env = create_malfunction(tree_observation, 8)
+                train_env = create_malfunction(tree_observation, 8, 0.25,0.25,0.25,0.25)
             if j > 960000:
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
@@ -634,10 +670,10 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", help="use GPU if available", default=True, type=bool)
     parser.add_argument("--num_threads", help="number of threads PyTorch can use", default=1, type=int)
 
-    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD+r", type=str)
+    parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="EWC+PAU", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="DQN", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
