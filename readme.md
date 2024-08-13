@@ -1,5 +1,5 @@
 
-# Continual-DQN-Expansion #
+# Continual-DQN-Expansion (CDE)#
 - Code for the Continual-DQN-Expansion-Algorithm
 - Code Implementations of 4 different Learning Curriculum (+5 extra Curricula with changed task sequences)
 - Code to evaluate the Results
