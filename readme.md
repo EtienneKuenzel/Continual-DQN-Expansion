@@ -11,9 +11,11 @@
 ## Usage ##
 ### Requirements ###
 -After cloning you can create an environment using:  
-```conda env create -f environment.yml```\\
-```python -m pip install flatland-rl```\\
-```python -m pip install torch ~```\\
+```conda env create -f environment.yml```
+
+```python -m pip install flatland-rl```
+
+```python -m pip install torch ~```
 
 ### Training ###
 Run CDE on the Custom Curriculum:
