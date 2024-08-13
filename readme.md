@@ -1,5 +1,5 @@
 
-# Continual-DQN-Expansion (CDE)#
+# Continual-DQN-Expansion (CDE) #
 - Code for the Continual-DQN-Expansion-Algorithm
 - Code Implementations of 4 different Learning Curriculum (+5 extra Curricula with changed task sequences)
 - Code to evaluate the Results
@@ -11,9 +11,9 @@
 ## Usage ##
 ### Requirements ###
 -After cloning you can create an environment using:  
-```conda env create -f environment.yml```
-```python -m pip install flatland-rl```
-```python -m pip install torch ~```
+```conda env create -f environment.yml```\\
+```python -m pip install flatland-rl```\\
+```python -m pip install torch ~```\\
 
 ### Training ###
 Run CDE on the Custom Curriculum:
