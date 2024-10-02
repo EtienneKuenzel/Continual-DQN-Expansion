@@ -10,7 +10,7 @@ This repository contains the code and resources for our paper, which addresses t
 
 ## Continual-DQN-Expansion (CDE) ##
 <p float="left">
-  <img src="Evaluation\images\cde.png" width="100%" />
+  <img src="Evaluation\images\cde.jpg" width="100%" />
 </p>
 
 
