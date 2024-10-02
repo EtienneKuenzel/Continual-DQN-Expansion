@@ -1,12 +1,19 @@
 
-# Continual-DQN-Expansion (CDE) #
-- Code for the Continual-DQN-Expansion-Algorithm
-- Code Implementations of 4 different Learning Curriculum (+5 extra Curricula with changed task sequences)
-- Code to evaluate the Results
+# Mitigating the Stability-Plasticity Dilemma in Adaptive Train Scheduling with Curriculum-Driven Continual DQN Expansion #
+This repository contains the code and resources for our paper, which addresses the stability-plasticity dilemma in adaptive train scheduling. In this work, we introduce different curricula for train scheduling and an algorithm called "Continual Deep Q-Network Expansion" (CDE) to improve agent adaptability in non-stationary environments. Our method dynamically adjusts Q-function subspaces and utilizes Elastic Weight Consolidation (EWC) and Rational Padé Activation Function to adress Catastrophic Forgetting and decreasing Network Plasticity, achieving superior learning efficiency and generalization compared to traditional RL baselines. The curriculum design emphasizes skill building through adjacent tasks, helping agents retain learned knowledge while effectively acquiring new behaviors.
 
-## Simulator ##
+- Code for the [Continual-DQN-Expansion-Algorithm](MARL/flatland-starter-kit-master/baselines/reinforcement_learning/dddqn_policy.py)
+- Code Implementations of 4 different [Base Learning Curriculum](MARL/flatland-starter-kit-master/baselines/multi_agent_training.py)
+- Code to evaluate the [Results](Evaluation)
+- Link to the [Paper](https://arxiv.org/pdf/2408.09838)
+- Simulator used is [Flatland-RL](https://github.com/flatland-association/flatland-rl) by AICrowd
 
-- Simulator used is Flatland-RL : https://github.com/flatland-association/flatland-rl
+## Continual-DQN-Expansion (CDE) ##
+<p float="left">
+  <img src="Evaluation\images\cde.png" width="100%" />
+</p>
+
+
 
 ## Usage ##
 ### Requirements ###
