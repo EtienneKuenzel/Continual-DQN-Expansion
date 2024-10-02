@@ -49,7 +49,7 @@ python eval_weights.py --file="weights_***.csv" --network="0" --layer=0
   <img src="Evaluation\images\Baselines_Curriculum_Scores.png" width="49%" />
 </p>
 
-### DQN Evaluation ###
+### DQN Evaluation on the Custom Curriculum without Rehearsal ###
 <p float="left">
   <img src="Evaluation\images\DQN_Completions.png" width="49%" />
   <img src="Evaluation\images\DQN_Score.png" width="49%" />
