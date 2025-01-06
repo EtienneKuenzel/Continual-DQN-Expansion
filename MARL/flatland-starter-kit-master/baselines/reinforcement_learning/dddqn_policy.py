@@ -30,7 +30,7 @@ class Continual_DQN_Expansion():
         self.parameters = parameters
         self.evaluation_mode = evaluation_mode
         self.networks[0].append(subCDE_Policy(state_size, action_size, parameters, evaluation_mode))
-        self.x = 0
+        self.anchor_number = 2
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = []
@@ -56,63 +56,31 @@ class Continual_DQN_Expansion():
         self.act_rotation +=1
         self.act_rotation %= len(self.networks[-1])
     def step(self, handle, state, action, reward, next_state, done):
-        #erstes netwrok wir im moment geupdate
         for network in self.networks[-1]:
             network.step(handle, state, action, reward, next_state, done)
     def expansion(self):
-        self.act_rotation = 1
         last_networks = self.networks[-1]
-        # Compute the average score for each element in the last list and store it with the element and its index.
-        scored_networks_with_indexes = [(numpy.average(x.score), i, x) for i, x in enumerate(last_networks)]
+        self.act_rotation = 0
         # Use nlargest to keep the top 2 elements with the highest average score, including their indexes.
-        top_2_networks_with_indexes = heapq.nlargest(2, scored_networks_with_indexes, key=lambda item: item[0])
+        top_networks = heapq.nlargest(self.anchor_number, [(numpy.average(x.score), i, x) for i, x in enumerate(last_networks)], key=lambda item: item[0])
         # Extract the elements (discard the average scores) and indexes, then update self.networks[-1].
-        top_2_indexes = [i for _, i, _ in top_2_networks_with_indexes]
-        self.networks[-1] = [x for _, _, x in top_2_networks_with_indexes]
-        networks_copy = self.networks[-1][:]
-        self.networkEP.append(top_2_indexes)
-        s = []
-        c = []
-        for x in top_2_indexes:
-            s.append(sum(last_networks[x].score) / len(last_networks[x].score))
-            c.append(sum(last_networks[x].completions) / len(last_networks[x].completions))
-        self.networkEP_scores.append(s)
-        self.networkEP_completions.append(c)
-        if len(networks_copy) == 1:
-            #adding the current network to the past stack
-            #self.networks.insert(len(self.networks) - 1, networks_copy[:])
+        top_network_indexes = [i for _, i, _ in top_networks]
+        self.networks[-1] = [x for _, _, x in top_networks]
+        self.networkEP.append(top_network_indexes)
+        self.networkEP_scores.append([numpy.mean(last_networks[x].score) for x in top_network_indexes])
+        self.networkEP_completions.append([numpy.mean(last_networks[x].completions) for x in top_network_indexes])
+        #double the amount of networks first half= EWC last half =PAU
+        a = len(self.networks[-1])
+        for network in range(a):
+            self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][network].get_weigths()))
+            self.networks[-1][-1].set_parameters(self.networks[-1][network].qnetwork_local,
+                                                self.networks[-1][network].qnetwork_target,
+                                                self.networks[-1][network].optimizer, self.networks[-1][network].ewc_loss, self.networks[-1][network].memory,
+                                                self.networks[-1][network].loss, self.networks[-1][network].params,
+                                                self.networks[-1][network].p_old)
+            self.networks[-1][network].update_ewc()
+            self.networks[-1][network].freeze = True
 
-            #aadding PAU to new stack
-            self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
-            self.networks[-1][-1].set_parameters(self.networks[-1][0].qnetwork_local,
-                                                self.networks[-1][0].qnetwork_target,
-                                                self.networks[-1][0].optimizer, 0, self.networks[-1][0].memory,
-                                                self.networks[-1][0].loss, self.networks[-1][0].params,
-                                                self.networks[-1][0].p_old)
-            #Adding EWC fertig to newstack
-            self.networks[-1][0].update_ewc()
-        else:
-            self.networks.insert(len(self.networks) - 1, networks_copy[:])
-
-            self.networks[-1].insert(1, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][0].get_weigths()))
-            self.networks[-1][1].set_parameters(self.networks[-1][0].qnetwork_local,
-                                                self.networks[-1][0].qnetwork_target,
-                                                self.networks[-1][0].optimizer, self.networks[-1][0].ewc_loss, self.networks[-1][0].memory,
-                                                self.networks[-1][0].loss, self.networks[-1][0].params,
-                                                self.networks[-1][0].p_old)
-
-            self.networks[-1][0].update_ewc()
-            self.networks[-1][0].freeze = True
-
-            self.networks[-1].insert(3, subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][2].get_weigths()))
-            self.networks[-1][3].set_parameters(self.networks[-1][2].qnetwork_local,
-                                                self.networks[-1][2].qnetwork_target,
-                                                self.networks[-1][2].optimizer, 0, self.networks[-1][2].memory,
-                                                self.networks[-1][2].loss, self.networks[-1][2].params,
-                                                self.networks[-1][2].p_old)
-
-            self.networks[-1][2].update_ewc()
-            self.networks[-1][2].freeze = True
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode
 
@@ -123,7 +91,6 @@ class Continual_DQN_Expansion():
         for param_tuple in self.networks[-1][self.act_rotation].get_weigths():
             a, b = param_tuple
             result.append([a.tolist(), b.tolist()])
-
         return result
     def get_net(self):
         return self.act_rotation

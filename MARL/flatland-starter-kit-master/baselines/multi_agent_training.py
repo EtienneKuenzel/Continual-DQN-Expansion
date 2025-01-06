@@ -585,7 +585,7 @@ def train_agent(train_params, policy):
             for agent in train_env.get_agent_handles():
                 if info['action_required'][agent]:
                     update_values[agent] = True
-                    action = policy.act(agent, agent_obs[agent], eps=eps_start)
+                    action = policy.act(agent, agent_obs[agent], eps=eps_start, eval=evaluation)#EDit
                     actions_taken.append(action)
                 else:
                     # An action is not required if the train hasn't joined the railway network,
@@ -700,6 +700,7 @@ if __name__ == "__main__":
         print("Error: Non-Existent Policy")
         sys.exit()
     print(policy_mapping.get(training_params.policy))
+
     start_time = time.time()
     for z in range(training_params.runs):
         print("Training Run: " + str(z))
@@ -708,19 +709,11 @@ if __name__ == "__main__":
             p[key].extend(m[key])
 
     print(time.time() - start_time)
-    # Get the directory of the current script
+    # safe data
     script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Define the relative path to the new base directory for saving the CSV files
     relative_base_dir = os.path.join(script_dir, '..', '..', '..', 'Evaluation', 'neweval')
-
-    # Ensure the directory exists
     os.makedirs(relative_base_dir, exist_ok=True)
-
-    # Construct the base filename
     base_filename = f"{training_params.policy}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
-
-    # Update the write_to_csv function calls to use the new relative directory
     write_to_csv(os.path.join(relative_base_dir, f"completions_{base_filename}.csv"), r)
     write_to_csv(os.path.join(relative_base_dir, f"score_{base_filename}.csv"), d)
     write_to_csv(os.path.join(relative_base_dir, f"weights_{base_filename}.csv"), t)
