@@ -30,7 +30,8 @@ class Continual_DQN_Expansion():
         self.parameters = parameters
         self.evaluation_mode = evaluation_mode
         self.networks[0].append(subCDE_Policy(state_size, action_size, parameters, evaluation_mode))
-        self.anchor_number = 2
+        self.anchor_number = self.parameters.anchors
+        print(self.anchor_number)
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = []
@@ -123,7 +124,7 @@ class subCDE_Policy:
             self.weights = copy.deepcopy(initialweights)
 
         if parameters.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda:2")
+            self.device = torch.device("cuda:0")
             print("🐇 Using GPU")
         else:
             self.device = torch.device("cpu")

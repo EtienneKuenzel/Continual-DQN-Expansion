@@ -233,8 +233,6 @@ def create_malfunction(tree_observation, agent,x=1.0,y=0.0,c=0.0,v=0.0):
           )
 def eval_policy(tree_observation, policy, observation_tree_depth, observation_radius, networkstep):
     eval_env_list = [create_pathfinding(tree_observation, 32),create_malfunction(tree_observation, 8), create_deadlock(tree_observation, 4, 32, 50, 16),make_custom_training(tree_observation)]
-
-
     for env in eval_env_list:
         for x in range(20):
             obs, info = env.reset(regenerate_rail=True, regenerate_schedule=True)
@@ -645,6 +643,7 @@ def train_agent(train_params, policy):
         m.get('type').append(policy.networkEP)
         m.get('score').append(policy.networkEP_scores)
         m.get('completions').append(policy.networkEP_completions)
+        print(j)
         if j >= (train_params.envchange*12) + 30000:
             break
 
@@ -663,6 +662,8 @@ if __name__ == "__main__":
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
 
+    parser.add_argument("--anchors", help="CDE anchors", default=1, type=int)
+
     parser.add_argument("--ewc_lambda", help="impact of the weight locking", default=0.1, type=float)
     parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)
     parser.add_argument("--layer_count", help="count of layers", default=2, type=int)
@@ -673,7 +674,7 @@ if __name__ == "__main__":
     parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="DQN", type=str)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="CDE", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
