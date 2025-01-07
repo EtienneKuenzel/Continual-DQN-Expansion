@@ -31,7 +31,6 @@ class Continual_DQN_Expansion():
         self.evaluation_mode = evaluation_mode
         self.networks[0].append(subCDE_Policy(state_size, action_size, parameters, evaluation_mode))
         self.anchor_number = self.parameters.anchors
-        print(self.anchor_number)
         self.act_rotation = 0
         self.evaluation_mode = False
         self.networkEP = []
@@ -79,7 +78,8 @@ class Continual_DQN_Expansion():
                                                 self.networks[-1][network].optimizer, self.networks[-1][network].ewc_loss, self.networks[-1][network].memory,
                                                 self.networks[-1][network].loss, self.networks[-1][network].params,
                                                 self.networks[-1][network].p_old)
-            self.networks[-1][network].update_ewc()
+            #self.networks[-1][network].update_ewc()
+            self.networks[-1][network].update_mas()
             self.networks[-1][network].freeze = True
 
     def set_evaluation_mode(self, evaluation_mode):
@@ -117,6 +117,8 @@ class subCDE_Policy:
         self.score = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
         self.completions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.score_try = 0
+        self.mas_loss = 0
+        self.mas_lambda = 0.1
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
             self.weights = [a] * parameters.layer_count
@@ -241,6 +243,65 @@ class subCDE_Policy:
 
         fisher = {n: p for n, p in fisher.items()}
         return fisher
+    def update_mas(self):
+        """
+        Updates the MAS loss by computing the importance weights (omega) and retaining previous parameter values.
+        """
+        self.qnetwork_local = self.qnetwork_local.to(self.device)
+        omega = self.compute_importance_weights(self.qnetwork_local, self.memory, self.params)
+        self.mas_loss += self.compute_mas_loss(self.qnetwork_local, omega, self.p_old).to(self.device)
+        self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
+
+        # Save current parameters as old parameters for future tasks
+        last_device = self.device
+        self.device = torch.device("cpu")
+        self.retain_graph = True
+        self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
+        self.p_old = {n: p.clone().detach().to(self.device) for n, p in self.params.items()}
+
+        self.qnetwork_local = self.qnetwork_local.to(last_device)
+        self.device = last_device
+
+    def compute_mas_loss(self, model, omega, p_old):
+        """
+        https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses/blob/master/MAS_to_be_published/MAS.py
+        Compute the MAS loss based on importance weights (omega) and previous parameter values.
+        """
+        loss = 0
+        for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
+            _loss = omega[n] * (p - p_old[n].to(self.device)) ** 2
+            loss += _loss.sum()
+        return loss
+
+    def compute_importance_weights(self, model, dataset, params):
+        """
+        Compute the importance weights (omega) for model parameters.
+        """
+        omega = {}
+        for n, p in copy.deepcopy(params).items():
+            p.data.zero_()
+            omega[n] = Variable(p.data)
+
+        model.eval()
+        states, actions, rewards, next_states, done = dataset.sample()
+
+        states = states.to(self.device)
+        for x in range(states.size(dim=0)):
+            model.zero_grad()
+            output = model(states[x], self.freeze).view(1, -1)
+            target = output.max(1)[1].view(-1)
+            negloglikelihood = F.nll_loss(F.log_softmax(output, dim=1), target)
+            negloglikelihood.backward(retain_graph=True)
+
+        for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
+            omega[n].data += p.grad.data ** 2 / len(dataset.sample())
+
+        omega = {n: p for n, p in omega.items()}
+        return omega
     def _soft_update(self, local_model, target_model, tau):
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
