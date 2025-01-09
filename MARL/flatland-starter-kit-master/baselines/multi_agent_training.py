@@ -583,7 +583,7 @@ def train_agent(train_params, policy):
             for agent in train_env.get_agent_handles():
                 if info['action_required'][agent]:
                     update_values[agent] = True
-                    action = policy.act(agent, agent_obs[agent], eps=eps_start, eval=evaluation)#EDit
+                    action = policy.act(agent, agent_obs[agent], eps=eps_start)#EDit
                     actions_taken.append(action)
                 else:
                     # An action is not required if the train hasn't joined the railway network,
@@ -643,8 +643,7 @@ def train_agent(train_params, policy):
         m.get('type').append(policy.networkEP)
         m.get('score').append(policy.networkEP_scores)
         m.get('completions').append(policy.networkEP_completions)
-        print(j)
-        if j >= (train_params.envchange*12) + 30000:
+        if j >= (train_params.envchange*12) + 100000:
             break
 
 
@@ -662,7 +661,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
 
-    parser.add_argument("--anchors", help="CDE anchors", default=1, type=int)
+    parser.add_argument("--anchors", help="CDE anchors", default=2, type=int)
 
     parser.add_argument("--ewc_lambda", help="impact of the weight locking", default=0.1, type=float)
     parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)

@@ -117,8 +117,6 @@ class subCDE_Policy:
         self.score = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
         self.completions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.score_try = 0
-        self.mas_loss = 0
-        self.mas_lambda = 0.1
         if initialweights == 0:
             a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
             self.weights = [a] * parameters.layer_count
@@ -249,7 +247,7 @@ class subCDE_Policy:
         """
         self.qnetwork_local = self.qnetwork_local.to(self.device)
         omega = self.compute_importance_weights(self.qnetwork_local, self.memory, self.params)
-        self.mas_loss += self.compute_mas_loss(self.qnetwork_local, omega, self.p_old).to(self.device)
+        self.ewc_loss += self.compute_mas_loss(self.qnetwork_local, omega, self.p_old).to(self.device)
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
 
         # Save current parameters as old parameters for future tasks
