@@ -1112,7 +1112,188 @@ class DQN_EWC_PAU_Policy:
         pd.DataFrame(a).dropna().to_csv( str(self.counter) + '_fisher_info.csv', index=False, header=False)
         self.counter += 1
         return pd.DataFrame(a)
+class DQN_MAS_Policy:
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
+        self.evaluation_mode = evaluation_mode
+        self.state_size = state_size
+        self.action_size = action_size
+        self.hidsize = parameters.hidden_size
+        self.buffer_size = parameters.buffer_size
+        self.batch_size = parameters.batch_size
+        self.update_every = parameters.update_every
+        self.learning_rate = parameters.learning_rate
+        self.tau = parameters.tau
+        self.gamma = parameters.gamma
+        self.buffer_min_size = parameters.buffer_min_size
+        self.freeze = freeze
+        self.ewc_loss = 0
+        self.ewc_lambda = parameters.ewc_lambda
+        self.retain_graph = False
+        self.score = 0
+        self.networkEP = []
+        self.networkEP_scores = []
+        self.networkEP_completions = []
+        self.score_try = 0
+        self.counter = 0
+        self.retain_graph = False
+        self.completions = 0
 
+        self.score_try = 0
+        if initialweights == 0:
+            a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
+            self.weights = [a] * parameters.layer_count
+        else:
+            self.weights = copy.deepcopy(initialweights)
+
+        if parameters.use_gpu and torch.cuda.is_available():
+            self.device = torch.device("cuda:0")
+            print("🐇 Using GPU")
+        else:
+            self.device = torch.device("cpu")
+            print("🐢 Using CPU")
+
+        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize=self.hidsize).to(torch.device("cpu"))
+
+        self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
+        self.p_old = {}
+        for n, p in copy.deepcopy(self.params).items():
+            self.p_old[n] = torch.Tensor(p.data)
+
+        self.qnetwork_local = self.qnetwork_local.to(self.device)
+        self.qnetwork_target = copy.deepcopy(self.qnetwork_local).to(self.device)
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
+        self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
+        self.t_step = 0
+    def set_parameters(self, ql, qt, opt, ewc_loss, buffer, loss, params, oldp):
+        self.qnetwork_local.load_state_dict(ql.state_dict())
+        self.qnetwork_target.load_state_dict(qt.state_dict())
+
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
+        self.ewc_loss = ewc_loss
+        self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
+        self.loss = loss
+        self.params = params
+        self.p_old = copy.deepcopy(oldp)
+    def expansion(self):
+        self.update_mas()
+    def act(self, handle, state, eps=0., eval = False):
+        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+        self.qnetwork_local.eval()
+        with torch.no_grad():
+            action_values = self.qnetwork_local(state, self.freeze)
+        self.qnetwork_local.train()
+
+        if random.random() > eps:
+            return np.argmax(action_values.cpu().data.numpy())
+        else:
+            return random.choice(np.arange(self.action_size))
+    def network_rotation(self, score, completions):
+        pass
+    def step(self, handle, state, action, reward, next_state, done):
+        assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
+        self.memory.add(state, action, reward, next_state, done)
+        self.t_step = (self.t_step + 1) % self.update_every
+        if self.t_step == 0:
+            if len(self.memory) > self.buffer_min_size and len(self.memory) > self.batch_size:
+                self._learn()
+    def _learn(self):
+        experiences = self.memory.sample()
+        states, actions, rewards, next_states, dones = experiences
+
+        q_expected = self.qnetwork_local(states, self.freeze).gather(1, actions)
+        q_targets_next = self.qnetwork_target(next_states, self.freeze).detach().max(1)[0].unsqueeze(-1)
+        q_targets = rewards + (self.gamma * q_targets_next * (1 - dones))
+        q_expected = q_expected.to(self.device)
+        q_targets = q_targets.to(self.device)
+
+        if not self.ewc_loss == 0:
+            self.ewc_loss = self.ewc_loss.to(self.device)
+
+        self.loss = F.mse_loss(q_expected, q_targets) + self.ewc_lambda * self.ewc_loss
+
+        self.loss = self.loss.to(self.device)
+
+        self.optimizer.zero_grad()
+        self.loss.backward(retain_graph=True)
+        self.optimizer.step()
+        self._soft_update(self.qnetwork_local, self.qnetwork_target, self.tau)
+    def update_mas(self):
+        """
+        Updates the MAS loss by computing the importance weights (omega) and retaining previous parameter values.
+        """
+        self.qnetwork_local = self.qnetwork_local.to(self.device)
+        omega = self.compute_importance_weights(self.qnetwork_local, self.memory, self.params)
+        self.ewc_loss += self.compute_mas_loss(self.qnetwork_local, omega, self.p_old).to(self.device)
+        self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size, self.device)
+
+        # Save current parameters as old parameters for future tasks
+        last_device = self.device
+        self.device = torch.device("cpu")
+        self.retain_graph = True
+        self.params = {n: p for n, p in self.qnetwork_local.named_parameters() if p.requires_grad}
+        self.p_old = {n: p.clone().detach().to(self.device) for n, p in self.params.items()}
+
+        self.qnetwork_local = self.qnetwork_local.to(last_device)
+        self.device = last_device
+
+    def compute_mas_loss(self, model, omega, p_old):
+        """
+        https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses/blob/master/MAS_to_be_published/MAS.py
+        Compute the MAS loss based on importance weights (omega) and previous parameter values.
+        """
+        loss = 0
+        for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
+            _loss = omega[n] * (p - p_old[n].to(self.device)) ** 2
+            loss += _loss.sum()
+        return loss
+
+    def compute_importance_weights(self, model, dataset, params):
+        """
+        Compute the importance weights (omega) for model parameters.
+        """
+        omega = {}
+        for n, p in copy.deepcopy(params).items():
+            p.data.zero_()
+            omega[n] = Variable(p.data)
+
+        model.eval()
+        states, actions, rewards, next_states, done = dataset.sample()
+
+        states = states.to(self.device)
+        for x in range(states.size(dim=0)):
+            model.zero_grad()
+            output = model(states[x], self.freeze).view(1, -1)
+            target = output.max(1)[1].view(-1)
+            negloglikelihood = F.nll_loss(F.log_softmax(output, dim=1), target)
+            negloglikelihood.backward(retain_graph=True)
+
+        for n, p in model.named_parameters():
+            if "activations" in n:
+                continue
+            omega[n].data += p.grad.data ** 2 / len(dataset.sample())
+
+        omega = {n: p for n, p in omega.items()}
+        return omega
+    def _soft_update(self, local_model, target_model, tau):
+        for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
+            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+    def get_name(self):
+        return "DQNMAS"
+    def get_weigths(self):
+        return self.qnetwork_local.get_weights()
+
+
+    def get_activation(self):
+        result = []
+        for param_tuple in self.get_weigths():
+            a, b = param_tuple
+            result.append([a.tolist(), b.tolist()])
+
+        return result
+    def get_net(self):
+        return "DQNMAS"
 
 Experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
 class ReplayBuffer:
