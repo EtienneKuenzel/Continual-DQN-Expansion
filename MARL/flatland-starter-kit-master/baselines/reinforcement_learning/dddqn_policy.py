@@ -1,21 +1,16 @@
-import copy
-import os
 import pickle
-import random
 from collections import namedtuple, deque, Iterable
-import math
-import numpy as np
-import torch
-import torch.nn.functional as F
-import torch.optim as optim
-import torch.nn as nn
-import copy
-import os
 from torch.autograd import Variable
 import pandas as pd
 import heapq
 import numpy
-
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+import copy
+import random
+import numpy as np
+from collections import defaultdict
 from reinforcement_learning.model import DQN, Network
 torch.set_printoptions(precision=5)
 
@@ -1294,6 +1289,163 @@ class DQN_MAS_Policy:
         return result
     def get_net(self):
         return "DQNMAS"
+
+
+class DQN_SI_Policy:
+    def __init__(self, state_size, action_size, parameters, evaluation_mode=False, freeze=True, initialweights=0):
+        self.evaluation_mode = evaluation_mode
+        self.state_size = state_size
+        self.action_size = action_size
+        self.hidsize = parameters.hidden_size
+        self.buffer_size = parameters.buffer_size
+        self.batch_size = parameters.batch_size
+        self.update_every = parameters.update_every
+        self.learning_rate = parameters.learning_rate
+        self.tau = parameters.tau
+        self.gamma = parameters.gamma
+        self.buffer_min_size = parameters.buffer_min_size
+        self.freeze = freeze
+        self.si_lambda = parameters.ewc_lambda  # Regularization weight for SI
+        self.si_omega = defaultdict(lambda: torch.zeros_like(torch.empty(0)))  # Importance weights
+        self.si_params = {}
+        self.si_prev_params = {}
+        self.loss = 0
+        self.retain_graph = False
+        self.score = 0
+        self.networkEP = []
+        self.networkEP_scores = []
+        self.networkEP_completions = []
+        self.score_try = 0
+        self.counter = 0
+        # Initialize network weights
+        if initialweights == 0:
+            a = torch.tensor((0.02996348, 0.61690165, 2.37539147, 3.06608078, 1.52474449, 0.25281987),dtype=torch.float), torch.tensor((1.19160814, 4.40811795, 0.91111034, 0.34885983),dtype=torch.float)
+            self.weights = [a] * parameters.layer_count
+        else:
+            self.weights = copy.deepcopy(initialweights)
+
+        # Device configuration
+        if parameters.use_gpu and torch.cuda.is_available():
+            self.device = torch.device("cuda:0")
+            print("🐇 Using GPU")
+        else:
+            self.device = torch.device("cpu")
+            print("🐢 Using CPU")
+
+        # Initialize Q-networks
+        self.qnetwork_local = DQN(state_size, action_size, self.weights, hidsize=self.hidsize).to(self.device)
+        self.qnetwork_target = copy.deepcopy(self.qnetwork_local).to(self.device)
+        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.learning_rate)
+
+        # Replay memory
+        self.memory = ReplayBuffer(action_size, self.buffer_size, self.batch_size, self.device)
+        self.t_step = 0
+
+        # Save initial parameter state for SI
+        self._save_initial_params()
+
+    def _save_initial_params(self):
+        """Save the initial parameters for SI tracking."""
+        self.si_params = {name: p.clone().detach() for name, p in self.qnetwork_local.named_parameters() if p.requires_grad}
+        self.si_prev_params = copy.deepcopy(self.si_params)
+        self.si_omega = {name: torch.zeros_like(p) for name, p in self.si_params.items()}
+    def expansion(self):
+        self.update_si()
+    def update_si(self):
+        """Update SI importance weights and save current parameter state."""
+        for name, param in self.qnetwork_local.named_parameters():
+            if param.requires_grad:
+                # Accumulate importance weights based on parameter updates
+                delta_param = param.data - self.si_prev_params[name]
+                self.si_omega[name] += (delta_param ** 2).detach() / (1e-6 + delta_param.abs().sum())
+                # Update the previous parameter state
+                self.si_prev_params[name] = param.data.clone().detach()
+
+    def compute_si_loss(self):
+        """Compute the SI regularization loss."""
+        si_loss = 0
+        for name, param in self.qnetwork_local.named_parameters():
+            if param.requires_grad:
+                delta_param = param - self.si_params[name]
+                si_loss += (self.si_omega[name] * delta_param ** 2).sum()
+        return self.si_lambda * si_loss
+
+    def act(self, handle, state, eps=0.0):
+        """Select an action based on the current policy."""
+        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+        self.qnetwork_local.eval()
+        with torch.no_grad():
+            action_values = self.qnetwork_local(state, self.freeze)
+        self.qnetwork_local.train()
+
+        # Epsilon-greedy action selection
+        if random.random() > eps:
+            return np.argmax(action_values.cpu().data.numpy())
+        else:
+            return random.choice(np.arange(self.action_size))
+
+    def step(self, handle, state, action, reward, next_state, done):
+        """Save experience in replay memory and learn every `update_every` steps."""
+        assert not self.evaluation_mode, "Policy has been initialized for evaluation only."
+        self.memory.add(state, action, reward, next_state, done)
+
+        # Learn every update_every steps
+        self.t_step = (self.t_step + 1) % self.update_every
+        if self.t_step == 0:
+            if len(self.memory) > self.buffer_min_size and len(self.memory) > self.batch_size:
+                self._learn()
+
+    def _learn(self):
+        """Sample a batch from memory and perform learning with SI regularization."""
+        experiences = self.memory.sample()
+        states, actions, rewards, next_states, dones = experiences
+
+        # Compute expected Q values
+        q_expected = self.qnetwork_local(states, self.freeze).gather(1, actions)
+        q_targets_next = self.qnetwork_target(next_states, self.freeze).detach().max(1)[0].unsqueeze(-1)
+        q_targets = rewards + (self.gamma * q_targets_next * (1 - dones))
+        q_expected = q_expected.to(self.device)
+        q_targets = q_targets.to(self.device)
+
+        # Compute standard loss
+        self.loss = F.mse_loss(q_expected, q_targets)
+
+        # Add SI regularization loss
+        si_loss = self.compute_si_loss()
+        total_loss = self.loss + si_loss
+
+        # Backpropagation
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        self.optimizer.step()
+
+        # Soft update target network
+        self._soft_update(self.qnetwork_local, self.qnetwork_target, self.tau)
+
+        # Update SI importance weights
+        #self.update_si()
+
+    def _soft_update(self, local_model, target_model, tau):
+        """Soft update model parameters."""
+        for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
+            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+
+    def get_name(self):
+        return "DQNSI"
+    def get_weigths(self):
+        return self.qnetwork_local.get_weights()
+    def network_rotation(self, score, completions):
+        pass
+
+    def get_activation(self):
+        result = []
+        for param_tuple in self.get_weigths():
+            a, b = param_tuple
+            result.append([a.tolist(), b.tolist()])
+
+        return result
+    def get_net(self):
+        return "DQNSI"
 
 Experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
 class ReplayBuffer:
