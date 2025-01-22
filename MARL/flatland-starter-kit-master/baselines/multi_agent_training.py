@@ -643,7 +643,7 @@ def train_agent(train_params, policy):
         m.get('type').append(policy.networkEP)
         m.get('score').append(policy.networkEP_scores)
         m.get('completions').append(policy.networkEP_completions)
-        print(j)
+        #print(j)
         if j >= (train_params.envchange*12) + 100000:
             break
 
@@ -673,7 +673,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
-    parser.add_argument("--expansion", help="time after expansion", default=4000, type=int)
+    parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="SI", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
