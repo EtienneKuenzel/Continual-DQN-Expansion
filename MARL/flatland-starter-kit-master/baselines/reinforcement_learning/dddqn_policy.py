@@ -1370,7 +1370,7 @@ class DQN_SI_Policy:
                 si_loss += (self.si_omega[name] * delta_param ** 2).sum()
         return self.si_lambda * si_loss
 
-    def act(self, handle, state, eps=0.0):
+    def act(self, handle, state, eps=0.0, eval=False):
         """Select an action based on the current policy."""
         state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
