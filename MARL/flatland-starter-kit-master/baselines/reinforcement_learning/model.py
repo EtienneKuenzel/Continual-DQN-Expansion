@@ -8,7 +8,7 @@ import torch.utils.checkpoint as checkpoint
 class Network(nn.Module):
 
     def __init__(self, state_size, action_size, hidsize1=128, hidsize2=128):
-        super(DQN, self).__init__()
+        super(Network, self).__init__()
         self.fc1_adv = nn.Linear(state_size, hidsize1)
         self.fc2_adv = nn.Linear(hidsize1, hidsize2)
         self.fc3_adv = nn.Linear(hidsize2, action_size)
