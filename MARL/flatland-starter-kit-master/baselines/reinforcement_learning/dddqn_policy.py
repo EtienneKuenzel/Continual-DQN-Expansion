@@ -108,21 +108,27 @@ class Continual_DQN_Expansion():
         self.networkEP = []
         self.networkEP_scores = []
         self.networkEP_completions = []
+        self.a = 0
 
     import numpy as np
 
     def act(self, handle, state, eps=0., eval=False):
-        actions = [network.act(handle, state, eps) for network in self.networks[-1]]
-        print(actions)
-        counts = np.bincount(actions)
-        print(counts)
-        top_actions = np.where(counts == counts.max())[0]
-        print(top_actions)
-        print("------------")
-        return np.random.choice(top_actions)
+        if eval:
+            actions = [network.act(handle, state, eps) for network in self.networks[-1]]
+            counts = np.bincount(actions)
+            print(counts)
+            top_actions = np.where(counts == counts.max())[0]
+            return np.random.choice(top_actions)
+        else:
+            return self.networks[-1][self.act_rotation].act(handle, state, eps)
 
     def network_rotation(self, score, completions):
-        pass
+        self.networks[-1][self.act_rotation].score.pop(0)  # Remove the oldest element
+        self.networks[-1][self.act_rotation].score.append(score)
+        self.networks[-1][self.act_rotation].completions.pop(0)  # Remove the oldest element
+        self.networks[-1][self.act_rotation].completions.append(completions)
+        self.act_rotation +=1
+        self.act_rotation %= len(self.networks[-1])
     def step(self, handle, state, action, reward, next_state, done):
         for network in self.networks[-1]:
             network.step(handle, state, action, reward, next_state, done)
@@ -138,8 +144,8 @@ class Continual_DQN_Expansion():
         self.networkEP_scores.append([numpy.mean(last_networks[x].score) for x in top_network_indexes])
         self.networkEP_completions.append([numpy.mean(last_networks[x].completions) for x in top_network_indexes])
         #double the amount of networks first half= EWC last half =PAU
-        a = len(self.networks[-1])
-        for network in range(a):
+        self.a= len(self.networks[-1])
+        for network in range(self.a):
             self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][network].get_weigths()))
             self.networks[-1][-1].set_parameters(self.networks[-1][network].qnetwork_local,
                                                 self.networks[-1][network].qnetwork_target,
@@ -148,6 +154,14 @@ class Continual_DQN_Expansion():
                                                 self.networks[-1][network].p_old)
             self.networks[-1][network].update_ewc()
             self.networks[-1][network].freeze = True
+    def miniexpansion(self):
+        for network in range(self.a):
+            self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][network].get_weigths()))
+            self.networks[-1][-1].set_parameters(self.networks[-1][network].qnetwork_local,
+                                                self.networks[-1][network].qnetwork_target,
+                                                self.networks[-1][network].optimizer, self.networks[-1][network].ewc_loss, self.networks[-1][network].memory,
+                                                self.networks[-1][network].loss, self.networks[-1][network].params,
+                                                self.networks[-1][network].p_old)
 
     def set_evaluation_mode(self, evaluation_mode):
         self.evaluation_mode = evaluation_mode

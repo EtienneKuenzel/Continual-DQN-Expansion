@@ -337,9 +337,15 @@ def train_agent(train_params, policy):
                 evaluation = True
         elif training_params.curriculum == "customPMD":
             expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
-            for threshold in expansion:
-                if j >= threshold and threshold not in expansion_done:
-                    policy.expansion()
+            miniexpansion = [train_params.envchange * i for i in range(4, 12)]
+            print(miniexpansion)
+            for threshold in miniexpansion:
+                if threshold in expansion:
+                    if j >= threshold and threshold not in expansion_done:
+                        policy.expansion()
+                        expansion_done.add(threshold)
+                elif j >= threshold and threshold not in expansion_done:
+                    policy.miniexpansion()
                     expansion_done.add(threshold)
             curriculum_steps = [
                 (train_params.envchange * 0, create_pathfinding(tree_observation, 4)),
@@ -583,7 +589,7 @@ def train_agent(train_params, policy):
             for agent in train_env.get_agent_handles():
                 if info['action_required'][agent]:
                     update_values[agent] = True
-                    action = policy.act(agent, agent_obs[agent], eps=eps_start)#EDit
+                    action = policy.act(agent, agent_obs[agent], eps=eps_start, eval=train_env.name=="Evaluation")#EDit
                     actions_taken.append(action)
                 else:
                     # An action is not required if the train hasn't joined the railway network,
@@ -643,6 +649,8 @@ def train_agent(train_params, policy):
         m.get('type').append(policy.networkEP)
         m.get('score').append(policy.networkEP_scores)
         m.get('completions').append(policy.networkEP_completions)
+        for x in range(100):
+            print("-----------------------")
         print(j)
         if j >= (train_params.envchange*12) + 100000:
             break
@@ -673,8 +681,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--curriculum", help="choose a curriculum(replace ___ with PMD in any sequence)P=Pathfinding, M=Malfunction, D=Deadlock: custom___", default="customPMD", type=str)
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
-    parser.add_argument("--expansion", help="time after expansion", default=32000, type=int)
-    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="CBP", type=str)
+    parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
+    parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="CDE", type=str)
     parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
