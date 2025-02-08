@@ -110,15 +110,16 @@ class Continual_DQN_Expansion():
         self.networkEP_completions = []
         self.a = 0
 
-    import numpy as np
 
-    def act(self, handle, state, eps=0., eval=False):
+    def act(self, handle, state, eps=0., eval=False, besteval=True):
         if eval:
-            actions = [network.act(handle, state, eps) for network in self.networks[-1]]
-            counts = np.bincount(actions)
-            print(counts)
-            top_actions = np.where(counts == counts.max())[0]
-            return np.random.choice(top_actions)
+            if besteval:
+                return self.networks[-1][self.act_rotation].act(handle, state, eps)
+            else:
+                actions = [network.act(handle, state, eps) for network in self.networks[-1]]
+                counts = np.bincount(actions)
+                top_actions = np.where(counts == counts.max())[0]
+                return np.random.choice(top_actions)
         else:
             return self.networks[-1][self.act_rotation].act(handle, state, eps)
 
@@ -132,18 +133,18 @@ class Continual_DQN_Expansion():
     def step(self, handle, state, action, reward, next_state, done):
         for network in self.networks[-1]:
             network.step(handle, state, action, reward, next_state, done)
-    def expansion(self):
+    def pruning(self):
         last_networks = self.networks[-1]
         self.act_rotation = 0
         # Use nlargest to keep the top 2 elements with the highest average score, including their indexes.
-        top_networks = heapq.nlargest(self.anchor_number, [(numpy.average(x.score), i, x) for i, x in enumerate(last_networks)], key=lambda item: item[0])
+        top_networks = heapq.nlargest(self.anchor_number,[(numpy.average(x.score), i, x) for i, x in enumerate(last_networks)],key=lambda item: item[0])
         # Extract the elements (discard the average scores) and indexes, then update self.networks[-1].
         top_network_indexes = [i for _, i, _ in top_networks]
         self.networks[-1] = [x for _, _, x in top_networks]
         self.networkEP.append(top_network_indexes)
         self.networkEP_scores.append([numpy.mean(last_networks[x].score) for x in top_network_indexes])
         self.networkEP_completions.append([numpy.mean(last_networks[x].completions) for x in top_network_indexes])
-        #double the amount of networks first half= EWC last half =PAU
+    def expansion(self):
         self.a= len(self.networks[-1])
         for network in range(self.a):
             self.networks[-1].append(subCDE_Policy(self.state_size, self.action_size, self.parameters, self.evaluation_mode, freeze=False, initialweights=self.networks[-1][network].get_weigths()))

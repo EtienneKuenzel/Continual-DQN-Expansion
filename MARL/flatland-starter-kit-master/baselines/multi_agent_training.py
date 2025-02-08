@@ -291,6 +291,7 @@ def write_to_csv(filename, data):
 
 
 def train_agent(train_params, policy):
+    besteval = True
     j = 0
     evaluation = False
     render = train_params.render
@@ -336,12 +337,17 @@ def train_agent(train_params, policy):
                 train_env = make_custom_training(tree_observation)
                 evaluation = True
         elif training_params.curriculum == "customPMD":
-            expansion = [train_params.expansion * i for i in range(1, math.floor(train_params.envchange*12/train_params.expansion))]
-            miniexpansion = [train_params.envchange * i for i in range(4, 12)]
+            expansion = [train_params.expansion * i for i in range(1,4)]#range(1, math.floor(train_params.envchange*13/train_params.expansion))]
+            miniexpansion = [train_params.envchange * i for i in range(4, 13)]
+            print(expansion)
             print(miniexpansion)
             for threshold in miniexpansion:
                 if threshold in expansion:
-                    if j >= threshold and threshold not in expansion_done:
+                    if threshold == 960000 and j >= 960000:
+                        policy.pruning()
+                        expansion_done.add(threshold)
+                    elif j >= threshold and threshold not in expansion_done:
+                        policy.pruning()
                         policy.expansion()
                         expansion_done.add(threshold)
                 elif j >= threshold and threshold not in expansion_done:
@@ -589,7 +595,7 @@ def train_agent(train_params, policy):
             for agent in train_env.get_agent_handles():
                 if info['action_required'][agent]:
                     update_values[agent] = True
-                    action = policy.act(agent, agent_obs[agent], eps=eps_start, eval=train_env.name=="Evaluation")#EDit
+                    action = policy.act(agent, agent_obs[agent], eps=eps_start, eval=train_env.name=="Evaluation", besteval=besteval)#EDit
                     actions_taken.append(action)
                 else:
                     # An action is not required if the train hasn't joined the railway network,
@@ -653,6 +659,8 @@ def train_agent(train_params, policy):
             print("-----------------------")
         print(j)
         if j >= (train_params.envchange*12) + 100000:
+            besteval = False
+        if j >= (train_params.envchange * 12) + 200000:
             break
 
 
