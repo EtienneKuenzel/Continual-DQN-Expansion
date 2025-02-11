@@ -343,7 +343,7 @@ def train_agent(train_params, policy):
             print(miniexpansion)
             for threshold in miniexpansion:
                 if threshold in expansion:
-                    if threshold == 960000 and j >= 960000:
+                    if threshold == 960000 and j >= 960000 and threshold not in expansion_done:
                         policy.pruning()
                         expansion_done.add(threshold)
                     elif j >= threshold and threshold not in expansion_done:
@@ -637,14 +637,22 @@ def train_agent(train_params, policy):
         d.get("networksteps").append(j)
         d.get("score").append(normalized_score)
         d.get("algo").append(policy.get_name())
-        d.get("env").append(train_env.name)
+        if train_env.name=="Evaluation" and besteval==True:
+            d.get("env").append(train_env.name + " BestNetwork")
+        elif train_env.name == "Evaluation" and besteval == False:
+            d.get("env").append(train_env.name + " Ensemble")
+        else:
+            d.get("env").append(train_env.name)
 
         r.get("networksteps").append(j)
         r.get("completions").append(completion)
         r.get("algo").append(policy.get_name())
-        r.get("env").append(train_env.name)
-        policy.network_rotation(normalized_score, completion)
-
+        if train_env.name=="Evaluation" and besteval==True:
+            r.get("env").append(train_env.name + " BestNetwork")
+        elif train_env.name == "Evaluation" and besteval == False:
+            r.get("env").append(train_env.name + " Ensemble")
+        else:
+            r.get("env").append(train_env.name)
         t.get("networksteps").append(j)
         t.get("function").append(policy.get_activation())
         t.get("type").append(policy.get_net())
@@ -655,8 +663,8 @@ def train_agent(train_params, policy):
         m.get('type').append(policy.networkEP)
         m.get('score').append(policy.networkEP_scores)
         m.get('completions').append(policy.networkEP_completions)
-        for x in range(100):
-            print("-----------------------")
+        policy.network_rotation(normalized_score, completion)
+
         print(j)
         if j >= (train_params.envchange*12) + 100000:
             besteval = False
@@ -678,7 +686,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
 
-    parser.add_argument("--anchors", help="CDE anchors", default=2, type=int)
+    parser.add_argument("--anchors", help="CDE anchors", default=3, type=int)
 
     parser.add_argument("--ewc_lambda", help="impact of the weight locking", default=0.5, type=float)
     parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)
@@ -733,7 +741,7 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     relative_base_dir = os.path.join(script_dir, '..', '..', '..', 'Evaluation', 'neweval')
     os.makedirs(relative_base_dir, exist_ok=True)
-    base_filename = f"{training_params.policy}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
+    base_filename = f"{training_params.policy}_{training_params.anchors}-{training_params.layer_count}x{training_params.hidden_size}_{training_params.curriculum}"
     write_to_csv(os.path.join(relative_base_dir, f"completions_{base_filename}.csv"), r)
     write_to_csv(os.path.join(relative_base_dir, f"score_{base_filename}.csv"), d)
     write_to_csv(os.path.join(relative_base_dir, f"weights_{base_filename}.csv"), t)
