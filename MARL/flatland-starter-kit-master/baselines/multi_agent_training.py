@@ -686,7 +686,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau", help="soft update of target parameters", default=1e-3, type=float)
     parser.add_argument("--learning_rate", help="learning rate", default=0.5e-4, type=float)
 
-    parser.add_argument("--anchors", help="CDE anchors", default=3, type=int)
+    parser.add_argument("--anchors", help="CDE anchors", default=27, type=int)
 
     parser.add_argument("--ewc_lambda", help="impact of the weight locking", default=0.5, type=float)
     parser.add_argument("--hidden_size", help="neurons per layer", default=1024, type=int)
@@ -699,7 +699,7 @@ if __name__ == "__main__":
     parser.add_argument("--envchange", help="time after environment change", default=80000, type=int)
     parser.add_argument("--expansion", help="time after expansion", default=320000, type=int)
     parser.add_argument("--policy", help="choose policy: CDE,DQN, EWC, PAU, PPO, A2C", default="CDE", type=str)
-    parser.add_argument("--runs", help="repetitions of the training loop", default=1, type=int)
+    parser.add_argument("--runs", help="repetitions of the training loop", default=10, type=int)
     training_params = parser.parse_args()
     os.environ["OMP_NUM_THREADS"] = str(training_params.num_threads)
 
