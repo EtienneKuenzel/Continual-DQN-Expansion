@@ -25,14 +25,14 @@ def process_file(filename, typeof):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--file", help="insert file path",default='completions2x1024.csv', type=str)
+    parser.add_argument("--file", help="insert file path",default='PPO_10k.csv', type=str)
     parser.add_argument("--type", help="completions, score",default="completions", type=str)
     parser_args = parser.parse_args()
 
     d = {'networksteps': [], 'Algorithm': [], parser_args.type: []}
     process_file(parser_args.file, parser_args.type)
     df = pd.DataFrame(data=d)
-
+    print(df)
 
     swarm_plot = sns.lineplot(x="networksteps", y=parser_args.type, hue="Algorithm",style ="Algorithm",palette="flare", data=df, zorder=4, errorbar=None)
     plt.rcParams['font.weight'] = 'bold'
@@ -63,5 +63,9 @@ if __name__ == "__main__":
     swarm_plot.set_ylabel(parser_args.type, fontdict={'size': 18}, fontweight="bold")
     plt.tight_layout()
     fig = swarm_plot.get_figure()
+    # Compute and print average of values over networksteps > 960000
+    filtered_df = df[df["networksteps"] > 960000]
+    avg_val = filtered_df[parser_args.type].mean()
+    print(f"Average {parser_args.type} for networksteps > 960000: {avg_val}")
 
     fig.savefig(parser_args.file[:-4] + "_training.png")
